@@ -22,10 +22,10 @@ export function createAccessToken(userId: string, role?: string): string {
   })
 }
 
-/** リフレッシュトークン生成（有効期限7日） */
+/** リフレッシュトークン生成（有効期限14日） */
 export function createRefreshToken(userId: string, role?: string): string {
   return jwt.sign({ userId, role: role || '', type: 'refresh' } satisfies TokenPayload, getJwtSecret(), {
-    expiresIn: '7d',
+    expiresIn: '14d',
   })
 }
 
