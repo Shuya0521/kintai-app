@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  lastName          String
+  firstName         String
+  lastNameKana      String   @default("")
+  firstNameKana     String   @default("")
+  phone             String   @default("")
+  avatarUrl         String   @default("")
+  role              String   // 統括部長|部長|参事|所長|課長|所長代理|主事|主査|リーダー|社員
+  department        String   // 営業部|工事部|リフォーム推進部|管理部
+  workType          String   @default("正社員") // 正社員|契約社員|パート・アルバイト|派遣社員|業務委託
+  hireDate          DateTime
+  paidLeaveBalance  Float    @default(20)
+  initialPassword   String   @default("")  // 承認後ログインカード用（初回ログインで消去）
+  status            String   @default("pending") // pending|active|retired
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  attendances       Attendance[]
+  leaveRequests     LeaveRequest[]
+  givenApprovals    Approval[] @relation("ApproverRelation")
+}
+
+model Attendance {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            String    // YYYY-MM-DD format
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  breakStartTime  DateTime?
+  breakTotalMin   Int       @default(0)
+  workMin         Int       @default(0)
+  overtimeMin     Int       @default(0)
+  workPlace       String    @default("office") // office|remote
+  status          String    @default("working") // working|breaking|done|holiday
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model LeaveRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String    // vacation|half-am|half-pm|special
+  startDate   String    // YYYY-MM-DD
+  endDate     String    // YYYY-MM-DD
+  reason      String    @default("")
+  status      String    @default("pending") // pending|approved|rejected
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  approval    Approval?
+
+  @@index([userId, status])
+}
+
+model Approval {
+  id              String    @id @default(cuid())
+  leaveRequestId  String?   @unique
+  leaveRequest    LeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  requestType     String    // leave|stamp_correction|overtime|user_registration
+  requesterId     String
+  approverId      String
+  approver        User      @relation("ApproverRelation", fields: [approverId], references: [id])
+  status          String    @default("pending") // pending|approved|rejected
+  comment         String    @default("")
+  createdAt       DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([approverId, status])
+  @@index([requestType, status])
+}
+
+model OvertimeRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  year            Int
+  month           Int
+  totalMin        Int      @default(0)
+  warningTriggered Boolean @default(false)
+  limitExceeded    Boolean @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, year, month])
+}
+
+model Setting {
+  key       String   @id
+  value     String   // JSON string
+  updatedAt DateTime @updatedAt
+}

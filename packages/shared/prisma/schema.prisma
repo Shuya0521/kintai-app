@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── ユーザー ──────────────────────────────────────
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  employeeNumber      String    @unique     // 6桁社員番号（Excel出力用）
+  passwordHash        String
+  lastName            String
+  firstName           String
+  lastNameKana        String    @default("")
+  firstNameKana       String    @default("")
+  phone               String    @default("")
+  avatarUrl           String    @default("")
+  role                String    // 統括部長|部長|参事|所長|課長|所長代理|主事|主査|リーダー|社員
+  department          String    // 営業部|工事部|リフォーム推進部|管理部
+  workType            String    @default("正社員")
+  hireDate            DateTime
+  paidLeaveBalance    Float     @default(20)
+  mustChangePassword  Boolean   @default(true)  // 初回ログイン時パスワード変更強制
+  failedLoginAttempts Int       @default(0)     // ロックアウト用
+  lockedUntil         DateTime?                 // ロック解除時刻
+  status              String    @default("pending") // pending|active|retired
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  attendances         Attendance[]
+  leaveRequests       LeaveRequest[]
+  givenApprovals      Approval[]           @relation("ApproverRelation")
+  requestedApprovals  Approval[]           @relation("RequesterRelation")
+  overtimeRecords     OvertimeRecord[]
+  paidLeaveGrants     PaidLeaveGrant[]
+  refreshTokens       RefreshToken[]
+  sessions            Session[]
+  passwordHistories   PasswordHistory[]
+  missedStampAlerts   MissedStampAlert[]
+  auditLogs           AuditLog[]           @relation("AuditUserRelation")
+  delegationsGiven    ApprovalDelegation[] @relation("DelegatorRelation")
+  delegationsReceived ApprovalDelegation[] @relation("DelegateRelation")
+
+  @@index([department, role])
+}
+
+// ── 勤怠 ──────────────────────────────────────────
+model Attendance {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            String    // YYYY-MM-DD format
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  breakStartTime  DateTime?
+  breakTotalMin   Int       @default(0)
+  workMin         Int       @default(0)
+  overtimeMin     Int       @default(0)
+  lateMin         Int       @default(0)     // 遅刻分数
+  earlyLeaveMin   Int       @default(0)     // 早退分数
+  isHolidayWork   Boolean   @default(false) // 休日出勤フラグ
+  workPlace       String    @default("office") // office|remote
+  status          String    @default("working") // working|breaking|done|holiday
+  note            String    @default("")    // 備考
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date])
+}
+
+// ── 休暇申請 ──────────────────────────────────────
+model LeaveRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String    // vacation|half-am|half-pm|special
+  startDate   String    // YYYY-MM-DD
+  endDate     String    // YYYY-MM-DD
+  days        Float     @default(1)  // 取得日数（0.5単位対応）
+  reason      String    @default("")
+  status      String    @default("pending") // pending|approved|rejected
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  approval    Approval?
+
+  @@index([userId, status])
+  @@index([startDate, endDate])
+}
+
+// ── 承認 ──────────────────────────────────────────
+model Approval {
+  id              String    @id @default(cuid())
+  leaveRequestId  String?   @unique
+  leaveRequest    LeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  requestType     String    // leave|stamp_correction|overtime|user_registration
+  requesterId     String
+  requester       User      @relation("RequesterRelation", fields: [requesterId], references: [id])
+  approverId      String
+  approver        User      @relation("ApproverRelation", fields: [approverId], references: [id])
+  status          String    @default("pending") // pending|approved|rejected|escalated|cancelled
+  comment         String    @default("")
+  delegatedFrom   String?   // 代理承認元ユーザーID
+  escalatedFrom   String?   // エスカレーション元ユーザーID
+  escalatedAt     DateTime? // エスカレーション日時
+  dueAt           DateTime? // 承認期限
+  createdAt       DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([approverId, status])
+  @@index([requestType, status])
+  @@index([status, dueAt])
+}
+
+// ── 残業記録 ──────────────────────────────────────
+model OvertimeRecord {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year              Int
+  month             Int
+  totalMin          Int      @default(0)
+  warningTriggered  Boolean  @default(false)
+  limitExceeded     Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, year, month])
+}
+
+// ── 有給休暇付与 ──────────────────────────────────
+model PaidLeaveGrant {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grantDate       DateTime // 付与日
+  grantedDays     Float    // 付与日数
+  usedDays        Float    @default(0)  // 使用済み日数
+  carriedOverDays Float    @default(0)  // 繰越日数
+  expiredDays     Float    @default(0)  // 失効日数
+  expiresAt       DateTime // 失効日（付与から2年）
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, expiresAt])
+}
+
+// ── リフレッシュトークン ──────────────────────────
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenFamily String   // トークンファミリー（ローテーション管理）
+  tokenHash   String   @unique
+  isRevoked   Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenFamily])
+}
+
+// ── セッション ────────────────────────────────────
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenFamily  String
+  deviceInfo   String   @default("")
+  ipAddress    String   @default("")
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ── パスワード履歴 ────────────────────────────────
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ── 代理承認設定 ──────────────────────────────────
+model ApprovalDelegation {
+  id          String   @id @default(cuid())
+  delegatorId String
+  delegator   User     @relation("DelegatorRelation", fields: [delegatorId], references: [id])
+  delegateId  String
+  delegate    User     @relation("DelegateRelation", fields: [delegateId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  reason      String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([delegatorId, isActive])
+}
+
+// ── 打刻忘れアラート ──────────────────────────────
+model MissedStampAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  alertType String   // no_checkout|no_record|no_break_end
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+// ── 祝日マスタ ────────────────────────────────────
+model Holiday {
+  date String @id  // YYYY-MM-DD
+  name String
+  year Int
+
+  @@index([year])
+}
+
+// ── 監査ログ ──────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation("AuditUserRelation", fields: [userId], references: [id])
+  action     String   // login|logout|stamp|approve|reject|create|update|delete
+  targetType String   // user|attendance|leave_request|approval|setting
+  targetId   String   @default("")
+  details    String   @default("") // JSON string
+  ipAddress  String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([userId])
+}
+
+// ── 設定 ──────────────────────────────────────────
+model Setting {
+  key       String   @id
+  value     String   // JSON string
+  updatedAt DateTime @updatedAt
+}

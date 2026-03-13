@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --bg:     #080c14;
+  --s1:     #0f1623;
+  --s2:     #161f30;
+  --s3:     #1c2840;
+  --b:      #1e2d45;
+  --b2:     #243450;
+  --acc:    #818cf8;  /* インディゴ（管理者用） */
+  --green:  #34d399;
+  --amber:  #fbbf24;
+  --orange: #fb923c;
+  --red:    #f87171;
+  --purple: #c084fc;
+  --text:   #e2e8f0;
+  --t2:     #94a3b8;
+  --t3:     #3f5468;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea { font-size: 16px !important; }
+@media (min-width: 769px) {
+  input, select, textarea { font-size: inherit !important; }
+}

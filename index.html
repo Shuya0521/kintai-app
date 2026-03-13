@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勤怠管理システム — デモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #080c14;
+  --s1:     #0f1623;
+  --s2:     #161f30;
+  --s3:     #1c2840;
+  --b:      #1e2d45;
+  --b2:     #243450;
+  --acc:    #38bdf8;
+  --green:  #34d399;
+  --amber:  #fbbf24;
+  --orange: #fb923c;
+  --red:    #f87171;
+  --purple: #a78bfa;
+  --text:   #e2e8f0;
+  --t2:     #94a3b8;
+  --t3:     #3f5468;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--b);
+  display:flex;flex-direction:column;height:100vh;
+}
+.sb-logo{
+  padding:22px 20px 16px;border-bottom:1px solid var(--b);
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--acc);
+  letter-spacing:.12em;
+}
+.sb-logo span{display:block;font-size:9px;color:var(--t3);margin-top:3px;letter-spacing:.06em}
+.sb-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:9px;cursor:pointer;margin-bottom:2px;
+  font-size:13px;color:var(--t2);transition:all .15s;
+}
+.sb-item:hover{background:var(--s2);color:var(--text)}
+.sb-item.active{background:rgba(56,189,248,.1);color:var(--acc)}
+.sb-item .icon{font-size:15px;width:20px;text-align:center}
+.sb-user{
+  padding:14px 16px;border-top:1px solid var(--b);
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+}
+.sb-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--acc),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#0a0f1e;flex-shrink:0;
+}
+.sb-name{font-size:12px;font-weight:500}
+.sb-role{font-size:10px;color:var(--t3);font-family:'DM Mono',monospace}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;background:var(--bg)}
+
+/* ── PAGES ── */
+.page{display:none;padding:28px 32px;min-height:100vh}
+.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.page-title{font-size:20px;font-weight:700;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--t2);margin-bottom:24px}
+
+/* ── CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.kpi{background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:18px 20px}
+.kpi-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.kpi-val{font-size:28px;font-weight:700;font-family:'DM Mono',monospace}
+.kpi-sub{font-size:11px;color:var(--t3);margin-top:4px}
+
+/* ── TABLE ── */
+.card{background:var(--s1);border:1px solid var(--b);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 16px;text-align:left;color:var(--t3);font-size:10px;font-family:'DM Mono',monospace;font-weight:500;letter-spacing:.06em;border-bottom:1px solid var(--b);background:rgba(0,0,0,.2)}
+td{padding:11px 16px;border-bottom:1px solid rgba(30,45,69,.5);color:var(--t2)}
+tr:last-child td{border-bottom:0}
+tr:hover td{background:rgba(255,255,255,.02);color:var(--text)}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-family:'DM Mono',monospace;font-weight:500;border:1px solid}
+.b-green {color:var(--green); background:rgba(52,211,153,.1); border-color:rgba(52,211,153,.2)}
+.b-amber {color:var(--amber); background:rgba(251,191,36,.1);  border-color:rgba(251,191,36,.2)}
+.b-red   {color:var(--red);   background:rgba(248,113,113,.1); border-color:rgba(248,113,113,.2)}
+.b-blue  {color:var(--acc);   background:rgba(56,189,248,.1);  border-color:rgba(56,189,248,.2)}
+.b-gray  {color:var(--t2);    background:rgba(148,163,184,.07);border-color:rgba(148,163,184,.1)}
+.b-purple{color:var(--purple);background:rgba(167,139,250,.1); border-color:rgba(167,139,250,.2)}
+
+/* ── STAMP PAGE ── */
+.stamp-wrap{max-width:480px;margin:0 auto}
+.time-display{
+  text-align:center;padding:40px 20px 32px;
+  background:var(--s1);border:1px solid var(--b);border-radius:20px;margin-bottom:16px;
+}
+.clock{font-family:'DM Mono',monospace;font-size:52px;font-weight:400;letter-spacing:.06em;line-height:1}
+.clock-date{font-size:13px;color:var(--t2);margin-top:8px}
+.status-pill{
+  display:inline-flex;align-items:center;gap:6px;margin-top:14px;
+  padding:5px 14px;border-radius:20px;font-size:12px;font-family:'DM Mono',monospace;
+}
+.status-dot-live{width:7px;height:7px;border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.stamp-btn{
+  padding:18px;border-radius:14px;border:1.5px solid;cursor:pointer;
+  font-size:14px;font-weight:600;font-family:'Noto Sans JP',sans-serif;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:all .15s;
+}
+.stamp-btn .btn-icon{font-size:24px}
+.stamp-btn:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-1px)}
+.stamp-btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-in  {background:rgba(52,211,153,.1); border-color:rgba(52,211,153,.3); color:var(--green)}
+.btn-out {background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--red)}
+.btn-brk {background:rgba(251,191,36,.1); border-color:rgba(251,191,36,.3); color:var(--amber)}
+.btn-brke{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.2); color:var(--amber)}
+.btn-remote{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3);color:var(--purple)}
+.today-log{background:var(--s1);border:1px solid var(--b);border-radius:14px;padding:16px 20px}
+.log-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,45,69,.5)}
+.log-row:last-child{border-bottom:0}
+.log-label{font-size:12px;color:var(--t3)}
+.log-val{font-size:13px;font-family:'DM Mono',monospace;font-weight:500}
+
+/* ── PROGRESS BAR ── */
+.prog-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* ── FORM ── */
+.form-card{background:var(--s1);border:1px solid var(--b);border-radius:14px;padding:24px;max-width:560px}
+.form-label{font-size:11px;color:var(--t2);margin-bottom:6px;display:block}
+.form-input{
+  width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:10px;
+  padding:10px 14px;color:var(--text);font-size:13px;font-family:'Noto Sans JP',sans-serif;
+  outline:none;transition:border-color .15s;margin-bottom:14px;
+}
+.form-input:focus{border-color:var(--acc)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.type-card{
+  padding:12px;border-radius:10px;border:1.5px solid var(--b);
+  cursor:pointer;transition:all .15s;text-align:left;background:var(--s2);
+}
+.type-card:hover{border-color:var(--b2)}
+.type-card.selected{background:rgba(56,189,248,.08);border-color:rgba(56,189,248,.3)}
+.type-icon{font-size:20px;margin-bottom:4px}
+.type-name{font-size:12px;font-weight:600;color:var(--text)}
+.type-desc{font-size:10px;color:var(--t3);margin-top:2px}
+.submit-btn{
+  width:100%;padding:13px;border-radius:11px;border:0;
+  background:var(--acc);color:#0a0f1e;font-size:14px;font-weight:700;
+  font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;
+}
+.submit-btn:hover{background:#7dd3fc}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--s2);border:1px solid var(--b2);border-radius:12px;
+  padding:12px 20px;font-size:13px;display:flex;align-items:center;gap:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);transition:transform .3s ease;z-index:999;
+  white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+
+/* ── DEMO ACCOUNT CARDS ── */
+.demo-account{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;border-radius:10px;border:1.5px solid var(--b);
+  cursor:pointer;margin-bottom:8px;transition:all .18s;background:var(--s2);
+}
+.demo-account:hover{border-color:var(--b2);background:var(--s3);transform:translateY(-1px)}
+.demo-account.selected{border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.07)}
+.demo-av{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;
+}
+.demo-info{flex:1}
+.demo-name{font-size:13px;font-weight:600;color:var(--text)}
+.demo-email{font-size:10px;color:var(--t3);font-family:'DM Mono',monospace;margin-top:1px}
+.demo-arrow{font-size:14px;color:var(--t3);transition:all .18s}
+.demo-account:hover .demo-arrow{color:var(--acc);transform:translateX(2px)}
+.demo-account.selected .demo-arrow{color:var(--acc)}
+
+/* ── LOGIN ── */
+.login-wrap{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:var(--bg);
+}
+.login-box{
+  width:360px;background:var(--s1);border:1px solid var(--b);
+  border-radius:20px;padding:40px 32px;
+}
+.login-logo{font-family:'DM Mono',monospace;font-size:13px;color:var(--acc);letter-spacing:.12em;margin-bottom:4px}
+.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:12px;color:var(--t2);margin-bottom:28px}
+.login-error{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none}
+
+/* ── CHART ── */
+.chart-wrap{padding:20px;overflow-x:auto}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:120px;min-width:600px}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.bar{border-radius:4px 4px 0 0;min-height:2px;transition:height .4s ease;cursor:pointer;position:relative}
+.bar:hover::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100%+6px);left:50%;
+  transform:translateX(-50%);background:var(--s3);border:1px solid var(--b2);
+  border-radius:6px;padding:4px 8px;font-size:10px;color:var(--text);
+  white-space:nowrap;font-family:'DM Mono',monospace;pointer-events:none;z-index:10;
+}
+.bar-label{font-size:9px;color:var(--t3);font-family:'DM Mono',monospace}
+
+/* ── GAUGE ── */
+.gauge-wrap{padding:20px 24px}
+.gauge-track{height:10px;background:var(--s3);border-radius:5px;position:relative;overflow:visible;margin-bottom:8px}
+.gauge-fill{height:100%;border-radius:5px;transition:width .8s ease;position:relative}
+.gauge-mark{position:absolute;top:-4px;width:2px;height:18px;border-radius:1px;opacity:.6}
+.gauge-labels{display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;color:var(--t3)}
+
+/* ── ALERT CARD ── */
+.alert-item{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 20px;border-bottom:1px solid rgba(30,45,69,.5);
+}
+.alert-item:last-child{border-bottom:0}
+.alert-avatar{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;
+}
+.alert-name{font-size:13px;font-weight:500}
+.alert-dept{font-size:11px;color:var(--t3)}
+.alert-prog{flex:1;margin:0 16px}
+.alert-h{font-size:13px;font-family:'DM Mono',monospace;font-weight:600;text-align:right;min-width:48px}
+
+/* ── APPROVAL ── */
+.appr-item{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 20px;border-bottom:1px solid rgba(30,45,69,.5);
+}
+.appr-item:last-child{border-bottom:0}
+.appr-info{flex:1}
+.appr-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.appr-detail{font-size:11px;color:var(--t3)}
+.appr-btns{display:flex;gap:8px}
+.btn-approve{
+  padding:6px 14px;border-radius:8px;border:1px solid rgba(52,211,153,.3);
+  background:rgba(52,211,153,.1);color:var(--green);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;
+}
+.btn-approve:hover{background:rgba(52,211,153,.2)}
+.btn-reject{
+  padding:6px 14px;border-radius:8px;border:1px solid rgba(248,113,113,.3);
+  background:rgba(248,113,113,.1);color:var(--red);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;
+}
+.btn-reject:hover{background:rgba(248,113,113,.2)}
+
+/* ── MONTHLY CHART SECTION ── */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat{background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:16px 18px}
+.stat-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.stat-val{font-size:24px;font-weight:700;font-family:'DM Mono',monospace}
+</style>
+</head>
+<body>
+
+<!-- ================================================================ LOGIN -->
+<div id="login-page" style="width:100%;position:fixed;inset:0;z-index:100;background:var(--bg)">
+<div class="login-wrap">
+<div class="login-box">
+  <div class="login-logo">KINTAI SYSTEM</div>
+  <div class="login-title">おはようございます</div>
+  <div class="login-sub">デモ用アカウントでログインしてください</div>
+  <div class="login-error" id="login-err">メールアドレスまたはパスワードが正しくありません</div>
+  <label class="form-label">メールアドレス</label>
+  <input class="form-input" id="login-email" type="email" value="yamada@company.example.com" placeholder="email">
+  <label class="form-label">パスワード</label>
+  <input class="form-input" id="login-pass" type="password" value="Emp@password123" placeholder="password">
+  <button class="submit-btn" onclick="doLogin()" style="margin-top:4px">ログイン</button>
+  <div style="margin-top:20px">
+    <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">クリックで切り替え</div>
+    <div class="demo-account selected" onclick="selectAccount('yamada@company.example.com','Emp@password123')">
+      <div class="demo-av" style="background:rgba(56,189,248,.15);color:var(--acc)">山</div>
+      <div class="demo-info">
+        <div class="demo-name">山田 太郎 <span class="badge b-blue" style="font-size:9px;margin-left:4px">一般社員</span></div>
+        <div class="demo-email">yamada@company.example.com</div>
+      </div>
+      <span class="demo-arrow">→</span>
+    </div>
+    <div class="demo-account" onclick="selectAccount('manager@company.example.com','Mgr@password123')">
+      <div class="demo-av" style="background:rgba(167,139,250,.15);color:var(--purple)">田</div>
+      <div class="demo-info">
+        <div class="demo-name">田中 マネージャー <span class="badge b-purple" style="font-size:9px;margin-left:4px">管理者</span></div>
+        <div class="demo-email">manager@company.example.com</div>
+      </div>
+      <span class="demo-arrow">→</span>
+    </div>
+    <div class="demo-account" onclick="selectAccount('hr@company.example.com','Hr@password123')">
+      <div class="demo-av" style="background:rgba(52,211,153,.15);color:var(--green)">鈴</div>
+      <div class="demo-info">
+        <div class="demo-name">鈴木 人事 <span class="badge b-green" style="font-size:9px;margin-left:4px">人事</span></div>
+        <div class="demo-email">hr@company.example.com</div>
+      </div>
+      <span class="demo-arrow">→</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ================================================================ APP -->
+<div id="app" style="display:none;width:100%;display:none">
+<div class="sidebar">
+  <div class="sb-logo">KINTAI<br><span>勤怠管理システム</span></div>
+  <nav class="sb-nav" id="sb-nav"></nav>
+  <div class="sb-user" onclick="toggleUserMenu()" id="sb-user-btn">
+    <div class="sb-avatar" id="sb-av">山</div>
+    <div style="flex:1">
+      <div class="sb-name" id="sb-nm">山田 太郎</div>
+      <div class="sb-role" id="sb-rl">一般社員</div>
+    </div>
+    <span id="sb-chevron" style="font-size:9px;color:var(--t3);transition:transform .2s">▲</span>
+  </div>
+  <div id="user-menu" style="border-top:1px solid var(--b);overflow:hidden;max-height:0;transition:max-height .25s ease">
+    <div onclick="doLogout()" style="display:flex;align-items:center;gap:10px;padding:12px 18px;cursor:pointer;font-size:13px;color:var(--red);transition:background .12s" onmouseover="this.style.background='rgba(248,113,113,.07)'" onmouseout="this.style.background='transparent'">
+      <span>⏻</span> ログアウト
+    </div>
+  </div>
+</div>
+<div class="main" id="main-content"></div>
+</div>
+
+<!-- Logout Modal -->
+<div id="logout-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--b);border-radius:18px;padding:32px 28px;width:320px;text-align:center;animation:fadeIn .2s ease">
+    <div style="font-size:36px;margin-bottom:12px">⏻</div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px">ログアウトしますか？</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:24px" id="logout-user-label">山田 太郎 さん</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button onclick="closeLogoutModal()" style="padding:11px;border-radius:10px;border:1px solid var(--b2);background:var(--s2);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">キャンセル</button>
+      <button onclick="confirmLogout()" style="padding:11px;border-radius:10px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s" onmouseover="this.style.background='rgba(248,113,113,.2)'" onmouseout="this.style.background='rgba(248,113,113,.1)'">ログアウト</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✅ 操作が完了しました</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// デモデータ
+// ══════════════════════════════════════════════════
+const USERS = {
+  'yamada@company.example.com':  { pass:'Emp@password123', name:'山田 太郎',   role:'employee', dept:'開発部',   av:'山', overtime:28 },
+  'manager@company.example.com': { pass:'Mgr@password123', name:'田中 マネージャー', role:'manager', dept:'開発部', av:'田', overtime:12 },
+  'hr@company.example.com':      { pass:'Hr@password123',  name:'鈴木 人事',   role:'hr',       dept:'人事部',   av:'鈴', overtime:5 },
+};
+
+const ROLE_LABEL = { employee:'一般社員', manager:'管理者', hr:'人事' };
+
+const NAV = [
+  { id:'stamp',   icon:'⏱', label:'打刻',             roles:['employee','manager','hr'] },
+  { id:'daily',   icon:'📅', label:'日次一覧',          roles:['employee','manager','hr'] },
+  { id:'monthly', icon:'📊', label:'月次サマリ',         roles:['employee','manager','hr'] },
+  { id:'request', icon:'📋', label:'申請',             roles:['employee','manager','hr'] },
+  { id:'admin',   icon:'🏠', label:'管理者ダッシュボード', roles:['manager','hr'] },
+  { id:'export',  icon:'📤', label:'CSVエクスポート',    roles:['employee','manager','hr'] },
+];
+
+let currentUser = null;
+let currentPage = 'stamp';
+let stampState  = { in: null, out: null, breakStart: null, breakTotal: 0, status: 'none' };
+let approvals   = [
+  { id:1, name:'佐藤 花子', type:'有給申請', detail:'2026/3/10（月）全日', days:1 },
+  { id:2, name:'高橋 一郎', type:'打刻修正', detail:'2026/3/4 出勤: 8:45→9:00', days:null },
+  { id:3, name:'伊藤 美咲', type:'有給申請', detail:'2026/3/17〜18（2日）', days:2 },
+];
+
+// ── 時計 ──────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  const hh  = String(now.getHours()).padStart(2,'0');
+  const mm  = String(now.getMinutes()).padStart(2,'0');
+  const ss  = String(now.getSeconds()).padStart(2,'0');
+  const el  = document.getElementById('live-clock');
+  if (el) el.textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(tick, 1000);
+
+// ── ログイン ──────────────────────────────────────
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const user  = USERS[email];
+  if (!user || user.pass !== pass) {
+    document.getElementById('login-err').style.display = 'block';
+    return;
+  }
+  currentUser = { email, ...user };
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sb-av').textContent = user.av;
+  document.getElementById('sb-nm').textContent = user.name;
+  document.getElementById('sb-rl').textContent = ROLE_LABEL[user.role];
+  buildNav();
+  navigate('stamp');
+}
+
+function doLogout() {
+  currentUser = null;
+  stampState  = { in:null, out:null, breakStart:null, breakTotal:0, status:'none' };
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'block';
+  document.getElementById('login-err').style.display = 'none';
+}
+
+// ── ナビ構築 ──────────────────────────────────────
+function buildNav() {
+  const nav = document.getElementById('sb-nav');
+  nav.innerHTML = NAV.filter(n => n.roles.includes(currentUser.role)).map(n => `
+    <div class="sb-item" id="nav-${n.id}" onclick="navigate('${n.id}')">
+      <span class="icon">${n.icon}</span>${n.label}
+    </div>
+  `).join('');
+}
+
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById(`nav-${page}`);
+  if (navEl) navEl.classList.add('active');
+  const content = document.getElementById('main-content');
+  content.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'page active';
+  div.innerHTML = PAGES[page]?.() || '<div style="padding:40px;color:var(--t2)">準備中</div>';
+  content.appendChild(div);
+  if (page === 'stamp') { tick(); startClock(); }
+}
+
+let clockTimer = null;
+function startClock() {
+  clearInterval(clockTimer);
+  clockTimer = setInterval(tick, 1000);
+}
+
+// ── トースト ──────────────────────────────────────
+function toast(msg, icon='✅') {
+  const el = document.getElementById('toast');
+  el.innerHTML = `${icon} ${msg}`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ══════════════════════════════════════════════════
+// ページ定義
+// ══════════════════════════════════════════════════
+const PAGES = {
+
+// ── 打刻 ─────────────────────────────────────────
+stamp: () => {
+  const now  = new Date();
+  const date = now.toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  const s = stampState;
+  const canIn    = s.status === 'none';
+  const canBreak = s.status === 'working';
+  const canBreakE= s.status === 'breaking';
+  const canOut   = s.status === 'working';
+  const workMin  = s.in && s.out ? Math.round((s.out - s.in)/60000) - s.breakTotal : s.in ? Math.round((Date.now()-s.in)/60000) - s.breakTotal : 0;
+  const wh = Math.floor(Math.max(0,workMin)/60), wm = Math.max(0,workMin)%60;
+  const statusConf = {
+    none:{'label':'未出勤','cls':'b-gray','dot':'var(--t3)'},
+    working:{'label': s.workType==='remote' ? '在宅勤務中' : '勤務中','cls': s.workType==='remote' ? 'b-purple' : 'b-green','dot': s.workType==='remote' ? 'var(--purple)' : 'var(--green)'},
+    breaking:{'label':'休憩中','cls':'b-amber','dot':'var(--amber)'},
+    done:{'label':'退勤済','cls':'b-gray','dot':'var(--t3)'},
+  }[s.status];
+
+  return `
+  <div class="page-title">打刻</div>
+  <div class="page-sub">${currentUser.name} さん、今日もお疲れ様です</div>
+  <div class="stamp-wrap">
+    <div class="time-display">
+      <div class="clock" id="live-clock">--:--:--</div>
+      <div class="clock-date">${date}</div>
+      <div class="status-pill badge ${statusConf.cls}" style="margin-top:14px">
+        <span class="status-dot-live" style="background:${statusConf.dot}"></span>
+        ${statusConf.label}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+      <button class="stamp-btn btn-in"     onclick="doStamp('in')"     ${canIn?'':'disabled'}>
+        <span class="btn-icon">🏢</span>出勤
+      </button>
+      <button class="stamp-btn btn-remote" onclick="doStamp('remote')" ${canIn?'':'disabled'}>
+        <span class="btn-icon">🏠</span>在宅勤務
+      </button>
+      <button class="stamp-btn btn-out"    onclick="doStamp('out')"    ${canOut?'':'disabled'}>
+        <span class="btn-icon">🔴</span>退勤
+      </button>
+    </div>
+    <div class="btn-grid">
+      <button class="stamp-btn btn-brk" onclick="doStamp('break')" ${canBreak?'':'disabled'}>
+        <span class="btn-icon">☕</span>休憩開始
+      </button>
+      <button class="stamp-btn btn-brke" onclick="doStamp('breakEnd')" ${canBreakE?'':'disabled'}>
+        <span class="btn-icon">▶</span>休憩終了
+      </button>
+    </div>
+    <div class="today-log">
+      <div class="log-row">
+        <span class="log-label">勤務場所</span>
+        <span class="log-val">${s.in ? (s.workType==='remote' ? '<span style="color:var(--purple)">🏠 在宅勤務</span>' : '<span style="color:var(--green)">🏢 出社</span>') : '—'}</span>
+      </div>
+      <div class="log-row">
+        <span class="log-label">出勤時刻</span>
+        <span class="log-val" style="color:var(--green)">${s.in ? new Date(s.in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '—'}</span>
+      </div>
+      <div class="log-row">
+        <span class="log-label">退勤時刻</span>
+        <span class="log-val" style="color:var(--red)">${s.out ? new Date(s.out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '—'}</span>
+      </div>
+      <div class="log-row">
+        <span class="log-label">休憩時間</span>
+        <span class="log-val">${s.breakTotal ? s.breakTotal+'分' : '—'}</span>
+      </div>
+      <div class="log-row">
+        <span class="log-label">実働時間</span>
+        <span class="log-val" style="color:var(--acc)">${s.in ? wh+'h '+wm+'m' : '—'}</span>
+      </div>
+    </div>
+  </div>`;
+},
+
+// ── 日次一覧 ──────────────────────────────────────
+daily: () => {
+  const logs = [
+    { date:'3/5（水）', in:'09:02', out:'18:15', work:'8h13m', ot:'0h13m', st:'確定', place:'office' },
+    { date:'3/4（火）', in:'08:55', out:'20:30', work:'10h35m', ot:'2h35m', st:'確定', place:'remote' },
+    { date:'3/3（月）', in:'09:10', out:'18:00', work:'7h50m', ot:'0h00m', st:'確定', place:'remote' },
+    { date:'2/28（金）', in:'09:00', out:'19:45', work:'9h45m', ot:'1h45m', st:'確定', place:'office' },
+    { date:'2/27（木）', in:'—',    out:'—',    work:'—',    ot:'—',    st:'有給',  place:'' },
+    { date:'2/26（水）', in:'09:05', out:'18:10', work:'8h05m', ot:'0h05m', st:'確定', place:'office' },
+    { date:'2/25（火）', in:'08:50', out:'21:00', work:'11h10m', ot:'3h10m', st:'確定', place:'remote' },
+  ];
+  return `
+  <div class="page-title">日次一覧</div>
+  <div class="page-sub">2026年3月 / ${currentUser.name}</div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">📅 打刻履歴</span></div>
+    <table>
+      <thead><tr><th>日付</th><th>場所</th><th>出勤</th><th>退勤</th><th>実働</th><th>残業</th><th>状態</th><th></th></tr></thead>
+      <tbody>
+      ${logs.map(l => `<tr>
+        <td style="color:var(--text);font-weight:500">${l.date}</td>
+        <td>${l.place==='remote' ? '<span class="badge b-purple" style="font-size:9px">🏠在宅</span>' : l.place==='office' ? '<span class="badge b-green" style="font-size:9px">🏢出社</span>' : ''}</td>
+        <td style="color:var(--green);font-family:'DM Mono',monospace">${l.in}</td>
+        <td style="color:var(--red);font-family:'DM Mono',monospace">${l.out}</td>
+        <td style="font-family:'DM Mono',monospace">${l.work}</td>
+        <td style="font-family:'DM Mono',monospace;color:${l.ot==='—'||l.ot==='0h00m'?'var(--t3)':'var(--amber)'}">${l.ot}</td>
+        <td><span class="badge ${l.st==='有給'?'b-blue':l.st==='未打刻'?'b-red':'b-gray'}">${l.st}</span></td>
+        <td><span style="font-size:11px;color:var(--t3);cursor:pointer" onclick="toast('修正申請を送信しました','📝')">修正申請</span></td>
+      </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+},
+
+// ── 月次サマリ ────────────────────────────────────
+monthly: () => {
+  const ot = currentUser.overtime;
+  const pct = Math.min(100, ot/60*100);
+  const gauge_color = ot>=60?'var(--red)':ot>=45?'var(--orange)':ot>=36?'var(--amber)':'var(--green)';
+  const days = [8.2,10.6,7.8,0,8.1,11.2,8.0,9.5,0,8.3];
+  const maxH = 12;
+  return `
+  <div class="page-title">月次サマリ</div>
+  <div class="page-sub">2026年3月 / ${currentUser.name}</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">出勤日数</div><div class="kpi-val" style="color:var(--acc)">16<span style="font-size:14px;color:var(--t2)"> 日</span></div><div class="kpi-sub">前月比 +1日</div></div>
+    <div class="kpi"><div class="kpi-label">総実働時間</div><div class="kpi-val" style="color:var(--green)">${(128+ot).toFixed(0)}<span style="font-size:14px;color:var(--t2)"> h</span></div><div class="kpi-sub">所定 128h</div></div>
+    <div class="kpi"><div class="kpi-label">残業時間</div><div class="kpi-val" style="color:${gauge_color}">${ot}<span style="font-size:14px;color:var(--t2)"> h</span></div><div class="kpi-sub">${ot>=45?'⚠ 警告':ot>=36?'⚠ 注意':'正常'}</div></div>
+    <div class="kpi"><div class="kpi-label">有給残日数</div><div class="kpi-val" style="color:var(--purple)">12<span style="font-size:14px;color:var(--t2)"> 日</span></div><div class="kpi-sub">付与 20日</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">残業ゲージ</span></div>
+    <div class="gauge-wrap">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:8px">
+        <span>今月の残業時間</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:${gauge_color}">${ot}h / 60h</span>
+      </div>
+      <div class="gauge-track">
+        <div class="gauge-fill" style="width:${pct}%;background:${gauge_color}"></div>
+        <div class="gauge-mark" style="left:60%;background:var(--amber)"></div>
+        <div class="gauge-mark" style="left:75%;background:var(--orange)"></div>
+        <div class="gauge-mark" style="left:100%;background:var(--red)"></div>
+      </div>
+      <div class="gauge-labels"><span>0h</span><span>36h</span><span>45h</span><span>60h</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">日次実働バーチャート</span></div>
+    <div class="chart-wrap">
+      <div class="bar-chart">
+        ${days.map((h,i) => {
+          const pct = h/maxH*100;
+          const col = h===0?'var(--s3)':h>8?'var(--orange)':'var(--acc)';
+          return `<div class="bar-col">
+            <div class="bar" style="width:100%;height:${Math.max(2,pct)}%;background:${col}" data-tip="${h?h+'h':'-'}"></div>
+            <div class="bar-label">${i+1}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+},
+
+// ── 申請 ──────────────────────────────────────────
+request: () => `
+  <div class="page-title">申請</div>
+  <div class="page-sub">有給残日数: <span style="color:var(--green);font-family:'DM Mono',monospace;font-weight:700">12 日</span></div>
+  <div class="form-card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:14px">休暇の種別を選択</div>
+    <div class="type-grid">
+      ${[
+        {icon:'🌴',name:'有給休暇（全日）',desc:'1日消費'},
+        {icon:'🌅',name:'午前半休',desc:'0.5日消費'},
+        {icon:'🌇',name:'午後半休',desc:'0.5日消費'},
+        {icon:'⭐',name:'特別休暇',desc:'慶弔事由'},
+      ].map((t,i) => `
+        <div class="type-card ${i===0?'selected':''}" onclick="selectType(this)">
+          <div class="type-icon">${t.icon}</div>
+          <div class="type-name">${t.name}</div>
+          <div class="type-desc">${t.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="form-label">開始日 *</label>
+        <input type="date" class="form-input" value="2026-03-10">
+      </div>
+      <div>
+        <label class="form-label">終了日 *</label>
+        <input type="date" class="form-input" value="2026-03-10">
+      </div>
+    </div>
+    <label class="form-label">申請理由（任意）</label>
+    <textarea class="form-input" rows="3" placeholder="例: 私用のため"></textarea>
+    <div style="padding:10px 14px;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.15);border-radius:8px;font-size:12px;color:var(--t2);margin-bottom:14px">
+      🌴 有給 1日取得 → 残日数: <strong style="color:var(--green)">12日</strong> → <strong style="color:var(--acc)">11日</strong>
+    </div>
+    <button class="submit-btn" onclick="toast('有給申請を送信しました。上長の承認をお待ちください')">申請する →</button>
+  </div>`,
+
+// ── 管理者ダッシュボード ──────────────────────────
+admin: () => {
+  const members = [
+    { name:'山田 太郎', dept:'開発部', st:'勤務中',  in:'09:02', work:'6h12m', ot:28, stcls:'b-green' },
+    { name:'佐藤 花子', dept:'開発部', st:'休憩中',  in:'09:15', work:'4h30m', ot:12, stcls:'b-amber' },
+    { name:'高橋 一郎', dept:'開発部', st:'退勤済',  in:'08:45', work:'8h20m', ot:45, stcls:'b-gray'  },
+    { name:'伊藤 美咲', dept:'開発部', st:'有給',    in:'—',    work:'—',    ot:8,  stcls:'b-blue'  },
+    { name:'渡辺 健',   dept:'開発部', st:'未出勤',  in:'—',    work:'—',    ot:62, stcls:'b-red'   },
+  ];
+  const alerts = [
+    { name:'渡辺 健',   dept:'開発部', h:62, lv:'critical' },
+    { name:'高橋 一郎', dept:'開発部', h:45, lv:'warning' },
+    { name:'山田 太郎', dept:'開発部', h:28, lv:'caution' },
+  ];
+  return `
+  <div class="page-title">管理者ダッシュボード</div>
+  <div class="page-sub">本日 2026年3月5日（水）/ ${currentUser.name}</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">本日出勤中</div><div class="kpi-val" style="color:var(--green)">3<span style="font-size:14px;color:var(--t2)"> 名</span></div></div>
+    <div class="kpi"><div class="kpi-label">有給取得中</div><div class="kpi-val" style="color:var(--acc)">1<span style="font-size:14px;color:var(--t2)"> 名</span></div></div>
+    <div class="kpi"><div class="kpi-label">承認待ち</div><div class="kpi-val" style="color:var(--amber)">${approvals.length}<span style="font-size:14px;color:var(--t2)"> 件</span></div></div>
+    <div class="kpi"><div class="kpi-label">残業アラート</div><div class="kpi-val" style="color:var(--red)">2<span style="font-size:14px;color:var(--t2)"> 名</span></div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">⚠ 残業アラート</span></div>
+    ${alerts.map(a => {
+      const pct = Math.min(100, a.h/60*100);
+      const col = a.lv==='critical'?'var(--red)':a.lv==='warning'?'var(--orange)':'var(--amber)';
+      const lbl = a.lv==='critical'?'重大':a.lv==='warning'?'警告':'注意';
+      return `<div class="alert-item">
+        <div class="alert-avatar" style="background:${col}22;color:${col}">${a.name[0]}</div>
+        <div style="flex:0 0 120px"><div class="alert-name">${a.name}</div><div class="alert-dept">${a.dept}</div></div>
+        <div class="alert-prog">
+          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>
+        </div>
+        <span class="badge" style="color:${col};background:${col}18;border-color:${col}33">${lbl}</span>
+        <div class="alert-h" style="color:${col}">${a.h}h</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">📋 承認待ち申請 (${approvals.length}件)</span></div>
+    ${approvals.length===0?'<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">承認待ちの申請はありません</div>':
+    approvals.map(a => `<div class="appr-item">
+      <div class="appr-info">
+        <div class="appr-name">${a.name} <span class="badge ${a.type==='有給申請'?'b-blue':'b-purple'}" style="font-size:9px">${a.type}</span></div>
+        <div class="appr-detail">${a.detail}</div>
+      </div>
+      <div class="appr-btns">
+        <button class="btn-approve" onclick="approve(${a.id})">承認</button>
+        <button class="btn-reject"  onclick="reject(${a.id})">却下</button>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">👥 本日の出退勤状況</span></div>
+    <table>
+      <thead><tr><th>氏名</th><th>部署</th><th>状態</th><th>出勤</th><th>実働</th><th>今月残業</th></tr></thead>
+      <tbody>
+      ${members.map(m => `<tr>
+        <td style="color:var(--text);font-weight:500">${m.name}</td>
+        <td>${m.dept}</td>
+        <td><span class="badge ${m.stcls}">${m.st}</span></td>
+        <td style="font-family:'DM Mono',monospace">${m.in}</td>
+        <td style="font-family:'DM Mono',monospace">${m.work}</td>
+        <td style="font-family:'DM Mono',monospace;color:${m.ot>=60?'var(--red)':m.ot>=45?'var(--orange)':m.ot>=36?'var(--amber)':'var(--t2)'}">${m.ot}h</td>
+      </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+},
+
+// ── CSVエクスポート ───────────────────────────────
+export: () => `
+  <div class="page-title">CSVエクスポート</div>
+  <div class="page-sub">給与計算ソフトへの取込み・バックアップ用</div>
+  <div style="display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:16px 20px;margin-bottom:20px">
+    <span style="font-size:13px;color:var(--t2)">対象月</span>
+    <button onclick="" style="background:0;border:1px solid var(--b);color:var(--t2);padding:4px 10px;border-radius:7px;cursor:pointer;font-size:13px">←</button>
+    <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:600">2026年3月</span>
+    <button onclick="" style="background:0;border:1px solid var(--b);color:var(--t2);padding:4px 10px;border-radius:7px;cursor:pointer;font-size:13px">→</button>
+  </div>
+  ${[
+    { icon:'📄', title:'自分の月次勤怠CSV', desc:'給与計算連携用（弥生・freee汎用）', color:'var(--acc)', bg:'rgba(56,189,248,.08)', border:'rgba(56,189,248,.2)', tags:['出退勤時刻','実働・残業時間','月次合計行'] },
+    { icon:'👥', title:'全社員 月次勤怠CSV', desc:'給与計算システム一括取込み用', color:'var(--purple)', bg:'rgba(167,139,250,.08)', border:'rgba(167,139,250,.2)', tags:['社員コード付き','部署別','社員ごと小計'] },
+    { icon:'🗂', title:'社員マスタCSV', desc:'社員情報・有給残日数一覧', color:'var(--green)', bg:'rgba(52,211,153,.08)', border:'rgba(52,211,153,.2)', tags:['全社員','有給残日数','勤務形態'] },
+  ].filter((_,i) => i===0 || currentUser.role!=='employee').map(c => `
+    <div style="background:var(--s1);border:1px solid var(--b);border-radius:12px;overflow:hidden;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <span style="font-size:24px">${c.icon}</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:${c.color};margin-bottom:4px">${c.title}</div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:10px">${c.desc}</div>
+            <div style="display:flex;gap:6px">${c.tags.map(t=>`<span style="font-size:10px;padding:1px 8px;border-radius:4px;border:1px solid ${c.border};background:${c.bg};color:${c.color}">${t}</span>`).join('')}</div>
+          </div>
+        </div>
+        <button onclick="toast('CSVをダウンロードしました（デモ）','📥')" style="flex-shrink:0;padding:8px 16px;border-radius:10px;border:1px solid ${c.border};background:${c.bg};color:${c.color};font-size:12px;font-weight:600;cursor:pointer;margin-left:16px">↓ DL</button>
+      </div>
+    </div>
+  `).join('')}`,
+};
+
+// ── 打刻処理 ──────────────────────────────────────
+function doStamp(type) {
+  const s = stampState;
+  const now = Date.now();
+  if (type==='in')       { s.in=now; s.status='working'; s.workType='office'; toast('出勤打刻しました　'+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),'🏢'); }
+  if (type==='remote')   { s.in=now; s.status='working'; s.workType='remote'; toast('在宅勤務を開始しました　'+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),'🏠'); }
+  if (type==='out')      { s.out=now; s.status='done';    toast('退勤打刻しました　'+new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),'🔴'); }
+  if (type==='break')    { s.breakStart=now; s.status='breaking'; toast('休憩開始','☕'); }
+  if (type==='breakEnd') { s.breakTotal+=Math.round((Date.now()-s.breakStart)/60000); s.breakStart=null; s.status='working'; toast('休憩終了','▶'); }
+  navigate('stamp');
+}
+
+// ── 承認・却下 ────────────────────────────────────
+function approve(id) {
+  const a = approvals.find(x=>x.id===id);
+  approvals = approvals.filter(x=>x.id!==id);
+  toast(`${a.name}さんの${a.type}を承認しました`,'✅');
+  navigate('admin');
+}
+function reject(id) {
+  const a = approvals.find(x=>x.id===id);
+  approvals = approvals.filter(x=>x.id!==id);
+  toast(`${a.name}さんの${a.type}を却下しました`,'❌');
+  navigate('admin');
+}
+
+// ── 種別選択 ──────────────────────────────────────
+function selectType(el) {
+  document.querySelectorAll('.type-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ── デモアカウント選択 ────────────────────────────
+function selectAccount(email, pass) {
+  document.getElementById('login-email').value = email;
+  document.getElementById('login-pass').value  = pass;
+  document.getElementById('login-err').style.display = 'none';
+  document.querySelectorAll('.demo-account').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  // 少し間を置いてからログイン（選択されたのが見えるように）
+  setTimeout(doLogin, 160);
+}
+
+// ── Enterキーでログイン ───────────────────────────
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>

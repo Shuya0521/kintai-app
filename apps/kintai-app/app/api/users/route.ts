@@ -1,0 +1,64 @@
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { getCurrentUser, isAdminRole, jsonOk, jsonError } from '@/lib/auth'
+
+export async function GET(req: NextRequest) {
+  const me = await getCurrentUser()
+  if (!me || !isAdminRole(me.role)) return jsonError('権限がありません', 403)
+
+  const url = new URL(req.url)
+  const status = url.searchParams.get('status')
+  const department = url.searchParams.get('department')
+  const search = url.searchParams.get('search')
+
+  const where: Record<string, unknown> = {}
+  if (status) where.status = status
+  if (department) where.department = department
+  if (search) {
+    where.OR = [
+      { lastName: { contains: search } },
+      { firstName: { contains: search } },
+      { email: { contains: search } },
+    ]
+  }
+
+  const users = await prisma.user.findMany({
+    where,
+    select: {
+      id: true, email: true, lastName: true, firstName: true,
+      lastNameKana: true, firstNameKana: true, phone: true,
+      role: true, department: true, workType: true,
+      hireDate: true, paidLeaveBalance: true, status: true, createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return jsonOk({ users })
+}
+
+export async function PATCH(req: NextRequest) {
+  const me = await getCurrentUser()
+  if (!me || !isAdminRole(me.role)) return jsonError('権限がありません', 403)
+
+  try {
+    const { userId, ...updates } = await req.json()
+    if (!userId) return jsonError('ユーザーIDが必要です', 400)
+
+    const allowedFields = ['lastName', 'firstName', 'lastNameKana', 'firstNameKana', 'phone', 'role', 'department', 'workType', 'paidLeaveBalance', 'status']
+    const data: Record<string, unknown> = {}
+    for (const key of allowedFields) {
+      if (updates[key] !== undefined) data[key] = updates[key]
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { id: true, email: true, lastName: true, firstName: true, role: true, department: true, status: true },
+    })
+
+    return jsonOk({ user })
+  } catch (error) {
+    console.error('User update error:', error)
+    return jsonError('更新に失敗しました', 500)
+  }
+}

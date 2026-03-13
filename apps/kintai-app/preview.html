@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KINTAI - 勤怠管理システム</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080c14;
+      --s1: #0f1623;
+      --s2: #161f30;
+      --s3: #1c2840;
+      --b: #1e2d45;
+      --b2: #243450;
+      --acc: #38bdf8;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --orange: #fb923c;
+      --red: #f87171;
+      --purple: #a78bfa;
+      --text: #e2e8f0;
+      --t2: #94a3b8;
+      --t3: #3f5468;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 260px;
+      background-color: var(--s1);
+      border-right: 1px solid var(--s3);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px 0;
+    }
+
+    .sidebar-logo {
+      padding: 0 20px 30px;
+      border-bottom: 1px solid var(--s3);
+      margin-bottom: 20px;
+    }
+
+    .logo-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--acc);
+      letter-spacing: 2px;
+    }
+
+    .logo-subtitle {
+      font-size: 11px;
+      color: var(--t2);
+      margin-top: 4px;
+    }
+
+    .nav-section {
+      margin-bottom: 10px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      color: var(--t3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px 20px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      color: var(--t2);
+      font-size: 13px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-item:hover {
+      color: var(--acc);
+      background-color: rgba(56, 189, 248, 0.1);
+    }
+
+    .nav-item.active {
+      background-color: var(--acc);
+      color: var(--bg);
+      font-weight: 500;
+    }
+
+    .nav-item.admin-parent {
+      justify-content: space-between;
+    }
+
+    .admin-submenu {
+      background-color: var(--s2);
+      margin-top: 5px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s;
+    }
+
+    .admin-submenu.expanded {
+      max-height: 500px;
+    }
+
+    .admin-submenu .nav-item {
+      padding-left: 40px;
+      font-size: 12px;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid var(--s3);
+    }
+
+    .user-button {
+      padding: 12px 20px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      border-radius: 6px;
+      margin: 0 15px;
+      transition: all 0.2s;
+    }
+
+    .user-button:hover {
+      background-color: var(--s3);
+      border-color: var(--acc);
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: var(--s1);
+      border-bottom: 1px solid var(--s3);
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 13px;
+      color: var(--t2);
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 30px;
+    }
+
+    /* ===== PAGE CONTENT ===== */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* ===== LOGIN PAGE ===== */
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, var(--s1) 0%, var(--s2) 100%);
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 500px;
+      padding: 40px;
+      background-color: var(--s1);
+      border: 1px solid var(--s3);
+      border-radius: 12px;
+    }
+
+    .login-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--acc);
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    .login-subtitle {
+      color: var(--t2);
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+
+    .account-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .account-card {
+      padding: 20px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .account-card:hover {
+      background-color: var(--s3);
+      border-color: var(--acc);
+      transform: translateX(5px);
+    }
+
+    .card-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+
+    .card-role {
+      font-size: 12px;
+      color: var(--t2);
+      margin-bottom: 10px;
+    }
+
+    .card-details {
+      font-size: 11px;
+      color: var(--t3);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .btn-primary {
+      background-color: var(--acc);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background-color: var(--s2);
+      color: var(--text);
+      border: 1px solid var(--s3);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--s3);
+    }
+
+    .btn-success {
+      background-color: var(--green);
+      color: var(--bg);
+    }
+
+    .btn-danger {
+      background-color: var(--red);
+      color: white;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 11px;
+    }
+
+    /* ===== STAMP PAGE ===== */
+    .stamp-page {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .clock-display {
+      text-align: center;
+      padding: 40px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+
+    .time {
+      font-family: 'DM Mono', monospace;
+      font-size: 56px;
+      font-weight: 500;
+      color: var(--acc);
+      margin-bottom: 10px;
+    }
+
+    .date {
+      color: var(--t2);
+      font-size: 14px;
+    }
+
+    .stamp-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stamp-btn {
+      padding: 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .stamp-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .stamp-status {
+      background-color: var(--s2);
+      padding: 20px;
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--s3);
+    }
+
+    .status-row:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      color: var(--t2);
+      font-size: 13px;
+    }
+
+    .status-value {
+      font-family: 'DM Mono', monospace;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .work-log {
+      background-color: var(--s2);
+      padding: 20px;
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+    }
+
+    .work-log-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+
+    .log-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--s3);
+    }
+
+    .log-item:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      font-family: 'DM Mono', monospace;
+      color: var(--t2);
+    }
+
+    /* ===== TABLE ===== */
+    .table-container {
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background-color: var(--s3);
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--t2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 12px;
+      border-top: 1px solid var(--s3);
+      font-size: 13px;
+    }
+
+    tbody tr:hover {
+      background-color: var(--s3);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background-color: rgba(52, 211, 153, 0.2);
+      color: var(--green);
+    }
+
+    .badge-warning {
+      background-color: rgba(251, 191, 36, 0.2);
+      color: var(--amber);
+    }
+
+    .badge-danger {
+      background-color: rgba(248, 113, 113, 0.2);
+      color: var(--red);
+    }
+
+    .badge-info {
+      background-color: rgba(56, 189, 248, 0.2);
+      color: var(--acc);
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .kpi-card {
+      background: linear-gradient(135deg, var(--s2) 0%, var(--s3) 100%);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: var(--t2);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--acc);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ===== FORMS ===== */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'Noto Sans JP', sans-serif;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="date"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--acc);
+      background-color: var(--s3);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    /* ===== TABS ===== */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid var(--s3);
+      margin-bottom: 30px;
+      overflow-x: auto;
+    }
+
+    .tab-button {
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--t2);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-family: 'Noto Sans JP', sans-serif;
+      white-space: nowrap;
+    }
+
+    .tab-button:hover {
+      color: var(--acc);
+    }
+
+    .tab-button.active {
+      color: var(--acc);
+      border-bottom-color: var(--acc);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* ===== MODALS ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background-color: var(--s1);
+      border: 1px solid var(--s3);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 30px;
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--green);
+      color: var(--bg);
+      padding: 15px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 2000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .toast.error {
+      background-color: var(--red);
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* ===== ADMIN DASHBOARD ===== */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .quick-nav-card {
+      background: linear-gradient(135deg, var(--s2) 0%, var(--s3) 100%);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .quick-nav-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--acc);
+    }
+
+    .nav-icon {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    .nav-card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .chart-container {
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .chart-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      height: 200px;
+      margin-bottom: 15px;
+    }
+
+    .bar {
+      flex: 1;
+      background: linear-gradient(180deg, var(--acc) 0%, var(--purple) 100%);
+      border-radius: 4px 4px 0 0;
+      transition: all 0.3s;
+      position: relative;
+      min-height: 10px;
+    }
+
+    .bar:hover {
+      opacity: 0.8;
+    }
+
+    .bar-label {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--t2);
+    }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .heatmap-cell {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .heatmap-cell:hover {
+      transform: scale(1.05);
+    }
+
+    /* ===== APPROVALS ===== */
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 8px 12px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 6px;
+      color: var(--t2);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .filter-btn.active {
+      background-color: var(--acc);
+      border-color: var(--acc);
+      color: var(--bg);
+    }
+
+    .approval-card {
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+
+    .approval-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
+    }
+
+    .approval-type {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .approval-user {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 8px 0;
+    }
+
+    .approval-date {
+      font-size: 12px;
+      color: var(--t2);
+      margin-bottom: 12px;
+    }
+
+    .approval-details {
+      background-color: var(--s3);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: var(--t2);
+    }
+
+    .approval-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== MEMBERS ===== */
+    .search-filter-bar {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .member-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 20px;
+    }
+
+    .pagination-btn {
+      padding: 6px 10px;
+      background-color: var(--s2);
+      border: 1px solid var(--s3);
+      border-radius: 4px;
+      color: var(--t2);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .pagination-btn.active {
+      background-color: var(--acc);
+      color: var(--bg);
+      border-color: var(--acc);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--s3);
+      }
+
+      .main {
+        width: 100%;
+      }
+
+      .content {
+        padding: 15px;
+      }
+
+      .stamp-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .card-grid,
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        padding: 15px;
+      }
+
+      .page-title {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- LOGIN PAGE -->
+  <div id="loginPage" class="page active">
+    <div class="login-container">
+      <div class="login-box">
+        <div class="login-title">KINTAI</div>
+        <div class="login-subtitle">勤怠管理システムへログイン</div>
+        <div class="account-cards">
+          <div class="account-card" onclick="app.login({id: 'emp001', name: '田中太郎', role: 'employee', department: '開発部'})">
+            <div class="card-name">田中太郎</div>
+            <div class="card-role">一般社員</div>
+            <div class="card-details">開発部 / emp001</div>
+          </div>
+          <div class="account-card" onclick="app.login({id: 'emp002', name: '佐藤花子', role: 'admin', department: '総務部'})">
+            <div class="card-name">佐藤花子</div>
+            <div class="card-role">管理者</div>
+            <div class="card-details">総務部 / emp002</div>
+          </div>
+          <div class="account-card" onclick="app.login({id: 'emp003', name: '鈴木次郎', role: 'hr', department: '人事部'})">
+            <div class="card-name">鈴木次郎</div>
+            <div class="card-role">人事</div>
+            <div class="card-details">人事部 / emp003</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div id="mainLayout" class="container" style="display: none;">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-title">KINTAI</div>
+        <div class="logo-subtitle">勤怠管理システム</div>
+      </div>
+
+      <!-- EMPLOYEE NAV -->
+      <div id="employeeNav" class="nav-section" style="display: none;">
+        <div class="nav-label">メニュー</div>
+        <div class="nav-item active" data-page="stamp" onclick="app.goToPage('stamp')">打刻</div>
+        <div class="nav-item" data-page="daily" onclick="app.goToPage('daily')">日次一覧</div>
+        <div class="nav-item" data-page="monthly" onclick="app.goToPage('monthly')">月次サマリ</div>
+        <div class="nav-item" data-page="requests" onclick="app.goToPage('requests')">申請</div>
+      </div>
+
+      <!-- ADMIN NAV -->
+      <div id="adminNav" class="nav-section" style="display: none;">
+        <div class="nav-label">管理メニュー</div>
+        <div class="nav-item admin-parent" onclick="app.toggleAdminMenu()" style="padding-right: 12px;">
+          <span>ダッシュボード</span>
+          <span id="adminMenuToggle">▼</span>
+        </div>
+        <div id="adminSubmenu" class="admin-submenu">
+          <div class="nav-item" data-page="admin-dashboard" onclick="app.goToPage('admin-dashboard')">ダッシュボード</div>
+          <div class="nav-item" data-page="approvals" onclick="app.goToPage('approvals')">承認管理</div>
+          <div class="nav-item" data-page="members" onclick="app.goToPage('members')">メンバー管理</div>
+          <div class="nav-item" data-page="overtime" onclick="app.goToPage('overtime')">残業レポート</div>
+          <div class="nav-item" data-page="settings" onclick="app.goToPage('settings')">設定</div>
+        </div>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button class="user-button" onclick="app.showLogoutModal()">
+          👤 ログアウト
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+      <div class="header">
+        <div class="page-title" id="pageTitle">打刻</div>
+        <div class="header-info" id="headerInfo">
+          <span id="currentUser">ユーザー</span>
+          <span id="currentTime">00:00</span>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- STAMP PAGE -->
+        <div id="stampPage" class="page active">
+          <div class="stamp-page">
+            <div class="clock-display">
+              <div class="time" id="clockTime">00:00:00</div>
+              <div class="date" id="clockDate">2026年3月6日</div>
+            </div>
+
+            <div class="stamp-buttons">
+              <button class="stamp-btn" style="background-color: var(--acc); color: var(--bg);" onclick="app.stamp('in')" id="stampInBtn">出勤</button>
+              <button class="stamp-btn" style="background-color: var(--green); color: var(--bg);" onclick="app.stamp('out')" id="stampOutBtn" disabled>退勤</button>
+              <button class="stamp-btn" style="background-color: var(--amber); color: var(--bg);" onclick="app.stamp('break')" id="stampBreakBtn" disabled>休憩開始</button>
+              <button class="stamp-btn" style="background-color: var(--orange); color: var(--bg);" onclick="app.stamp('resume')" id="stampResumeBtn" disabled>休憩終了</button>
+            </div>
+
+            <div class="stamp-status">
+              <div class="status-row">
+                <div class="status-label">現在の状態</div>
+                <div class="status-value" id="currentStatus">未出勤</div>
+              </div>
+              <div class="status-row">
+                <div class="status-label">出勤時刻</div>
+                <div class="status-value" id="inTime">-</div>
+              </div>
+              <div class="status-row">
+                <div class="status-label">退勤時刻</div>
+                <div class="status-value" id="outTime">-</div>
+              </div>
+              <div class="status-row">
+                <div class="status-label">今日の勤務時間</div>
+                <div class="status-value" id="workHours">0時間0分</div>
+              </div>
+            </div>
+
+            <div class="work-log">
+              <div class="work-log-title">本日の勤務ログ</div>
+              <div id="workLogContainer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DAILY PAGE -->
+        <div id="dailyPage" class="page">
+          <h2 style="margin-bottom: 20px;">日次一覧</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>出勤</th>
+                  <th>退勤</th>
+                  <th>勤務時間</th>
+                  <th>状態</th>
+                </tr>
+              </thead>
+              <tbody id="dailyTableBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MONTHLY PAGE -->
+        <div id="monthlyPage" class="page">
+          <h2 style="margin-bottom: 20px;">月次サマリ</h2>
+          <div class="card-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">出勤日数</div>
+              <div class="kpi-value" id="kpi-days">20</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">総勤務時間</div>
+              <div class="kpi-value" id="kpi-hours">160h</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">残業時間</div>
+              <div class="kpi-value" id="kpi-overtime">12h</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">有給消化</div>
+              <div class="kpi-value" id="kpi-paid">3日</div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">週次勤務時間推移</div>
+            <div class="bar-chart" id="weeklyChart"></div>
+          </div>
+        </div>
+
+        <!-- REQUESTS PAGE -->
+        <div id="requestsPage" class="page">
+          <h2 style="margin-bottom: 20px;">申請</h2>
+          <div class="card" style="max-width: 500px;">
+            <form onsubmit="app.submitRequest(event)">
+              <div class="form-group">
+                <label>申請種類</label>
+                <select id="requestType" required>
+                  <option value="">選択してください</option>
+                  <option value="paid-leave">有給休暇</option>
+                  <option value="sick-leave">病気休暇</option>
+                  <option value="special-leave">特別休暇</option>
+                  <option value="time-adjustment">勤務時間調整</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>申請日</label>
+                <input type="date" id="requestDate" required>
+              </div>
+              <div class="form-group">
+                <label>理由・説明</label>
+                <textarea id="requestReason" placeholder="理由を入力してください"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">申請を送信</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ADMIN DASHBOARD PAGE -->
+        <div id="adminDashboardPage" class="page">
+          <h2 style="margin-bottom: 20px;">ダッシュボード</h2>
+
+          <div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 30px;">
+            <div class="quick-nav-card" onclick="app.goToPage('approvals')">
+              <div class="nav-icon">✓</div>
+              <div class="nav-card-label">承認管理</div>
+            </div>
+            <div class="quick-nav-card" onclick="app.goToPage('members')">
+              <div class="nav-icon">👥</div>
+              <div class="nav-card-label">メンバー管理</div>
+            </div>
+            <div class="quick-nav-card" onclick="app.goToPage('overtime')">
+              <div class="nav-icon">⏱</div>
+              <div class="nav-card-label">残業レポート</div>
+            </div>
+            <div class="quick-nav-card" onclick="app.goToPage('settings')">
+              <div class="nav-icon">⚙</div>
+              <div class="nav-card-label">設定</div>
+            </div>
+            <div class="quick-nav-card" onclick="app.goToPage('daily')">
+              <div class="nav-icon">📊</div>
+              <div class="nav-card-label">レポート</div>
+            </div>
+          </div>
+
+          <div class="card-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">本日出勤者</div>
+              <div class="kpi-value" id="kpi-present">23</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">未申請</div>
+              <div class="kpi-value" id="kpi-pending">8</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">承認待ち</div>
+              <div class="kpi-value" id="kpi-awaiting">5</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">残業中</div>
+              <div class="kpi-value" id="kpi-overtime-count">3</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">総従業員数</div>
+              <div class="kpi-value" id="kpi-total">28</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">月累計残業</div>
+              <div class="kpi-value" id="kpi-month-ot">156h</div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">リアルタイム勤務状況</div>
+            <table style="width: 100%; font-size: 12px;">
+              <thead>
+                <tr>
+                  <th style="text-align: left;">部門</th>
+                  <th>出勤</th>
+                  <th>未出勤</th>
+                  <th>休暇中</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td style="text-align: left;">開発部</td><td style="text-align: center;">6</td><td style="text-align: center;">1</td><td style="text-align: center;">1</td></tr>
+                <tr><td style="text-align: left;">営業部</td><td style="text-align: center;">4</td><td style="text-align: center;">2</td><td style="text-align: center;">0</td></tr>
+                <tr><td style="text-align: left;">人事部</td><td style="text-align: center;">3</td><td style="text-align: center;">0</td><td style="text-align: center;">0</td></tr>
+                <tr><td style="text-align: left;">総務部</td><td style="text-align: center;">5</td><td style="text-align: center;">1</td><td style="text-align: center;">1</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="chart-container">
+              <div class="chart-title">残業アラート（20h超過）</div>
+              <div style="font-size: 12px;">
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--s3);">
+                  <div style="color: var(--orange); font-weight: 600;">⚠ 山田太郎 - 24.5h</div>
+                </div>
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--s3);">
+                  <div style="color: var(--orange); font-weight: 600;">⚠ 鈴木美咲 - 22.0h</div>
+                </div>
+                <div style="padding: 8px 0;">
+                  <div style="color: var(--orange); font-weight: 600;">⚠ 伊藤健太 - 20.3h</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-container">
+              <div class="chart-title">週次勤務時間推移</div>
+              <div class="bar-chart" id="adminWeeklyChart"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APPROVALS PAGE -->
+        <div id="approvalsPage" class="page">
+          <h2 style="margin-bottom: 20px;">承認管理</h2>
+
+          <div class="filter-tabs">
+            <button class="filter-btn active" onclick="app.filterApprovals('all')">すべて</button>
+            <button class="filter-btn" onclick="app.filterApprovals('paid-leave')">有給</button>
+            <button class="filter-btn" onclick="app.filterApprovals('time-correction')">打刻修正</button>
+            <button class="filter-btn" onclick="app.filterApprovals('overtime')">残業</button>
+            <button class="filter-btn" onclick="app.filterApprovals('special')">特別</button>
+          </div>
+
+          <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <input type="text" id="approvalSearch" placeholder="名前で検索..." style="flex: 1; max-width: 300px;">
+            <select id="approvalStatus" style="max-width: 150px;">
+              <option value="">すべてのステータス</option>
+              <option value="pending">承認待ち</option>
+              <option value="approved">承認済み</option>
+              <option value="rejected">却下</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="font-size: 12px;">
+              <input type="checkbox" onchange="app.toggleBatchApprove(this.checked)" style="margin-right: 8px;">
+              一括承認
+            </label>
+          </div>
+
+          <div id="approvalsContainer"></div>
+        </div>
+
+        <!-- MEMBERS PAGE -->
+        <div id="membersPage" class="page">
+          <h2 style="margin-bottom: 20px;">メンバー管理</h2>
+
+          <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+            <div class="kpi-card">
+              <div class="kpi-label">総従業員数</div>
+              <div class="kpi-value" id="member-total">28</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">本日出勤</div>
+              <div class="kpi-value" id="member-present">23</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">休暇中</div>
+              <div class="kpi-value" id="member-on-leave">3</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">未出勤</div>
+              <div class="kpi-value" id="member-absent">2</div>
+            </div>
+          </div>
+
+          <div class="search-filter-bar">
+            <input type="text" id="memberSearch" placeholder="名前で検索..." class="search-input">
+            <select id="memberDept">
+              <option value="">すべての部門</option>
+              <option value="開発部">開発部</option>
+              <option value="営業部">営業部</option>
+              <option value="人事部">人事部</option>
+              <option value="総務部">総務部</option>
+            </select>
+            <button class="btn btn-primary" onclick="app.showAddMemberModal()">メンバー追加</button>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>社員ID</th>
+                  <th>名前</th>
+                  <th>部門</th>
+                  <th>役職</th>
+                  <th>状態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="membersTableBody">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination" id="membersPagination"></div>
+        </div>
+
+        <!-- OVERTIME PAGE -->
+        <div id="overtimePage" class="page">
+          <h2 style="margin-bottom: 20px;">残業レポート</h2>
+
+          <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <select id="overtimePeriod" onchange="app.updateOvertimeData()">
+              <option value="current">当月</option>
+              <option value="last-month">先月</option>
+              <option value="3months">過去3ヶ月</option>
+              <option value="6months">過去6ヶ月</option>
+            </select>
+          </div>
+
+          <div class="card-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">総残業時間</div>
+              <div class="kpi-value" id="ot-total-hours">156h</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">平均残業</div>
+              <div class="kpi-value" id="ot-avg-hours">5.5h</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">残業者数</div>
+              <div class="kpi-value" id="ot-people-count">12</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">36協定上限</div>
+              <div class="kpi-value" id="ot-limit">360h</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+            <div class="chart-container">
+              <div class="chart-title">部門別残業時間</div>
+              <div class="bar-chart" id="deptOvertimeChart"></div>
+            </div>
+
+            <div class="chart-container">
+              <div class="chart-title">従業員別残業分布（ヒートマップ）</div>
+              <div class="heatmap" id="overtimeHeatmap"></div>
+            </div>
+          </div>
+
+          <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">36協定アラート</div>
+            <div id="agreementAlerts" style="font-size: 12px;"></div>
+          </div>
+
+          <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">残業ランキング（当月）</div>
+            <table style="width: 100%; font-size: 12px;">
+              <thead>
+                <tr>
+                  <th style="text-align: left;">順位</th>
+                  <th style="text-align: left;">名前</th>
+                  <th style="text-align: left;">部門</th>
+                  <th style="text-align: right;">残業時間</th>
+                </tr>
+              </thead>
+              <tbody id="overtimeRankingBody">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="chart-container" style="margin-bottom: 20px;">
+            <div class="chart-title">月別残業時間推移</div>
+            <div class="bar-chart" id="monthlyOvertimeChart"></div>
+          </div>
+
+          <button class="btn btn-secondary" onclick="app.exportOvertimeCSV()" style="margin-top: 20px;">
+            📥 CSVエクスポート
+          </button>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div id="settingsPage" class="page">
+          <h2 style="margin-bottom: 20px;">設定</h2>
+
+          <div class="tabs">
+            <button class="tab-button active" onclick="app.switchSettingsTab('general')">一般</button>
+            <button class="tab-button" onclick="app.switchSettingsTab('attendance-rules')">勤怠ルール</button>
+            <button class="tab-button" onclick="app.switchSettingsTab('approval-flow')">承認フロー</button>
+            <button class="tab-button" onclick="app.switchSettingsTab('notifications')">通知</button>
+            <button class="tab-button" onclick="app.switchSettingsTab('security')">セキュリティ</button>
+          </div>
+
+          <!-- General Tab -->
+          <div id="tab-general" class="tab-content active">
+            <div class="card" style="max-width: 500px;">
+              <form onsubmit="app.saveSettings(event, 'general')">
+                <div class="form-group">
+                  <label>会社名</label>
+                  <input type="text" value="テスト株式会社" readonly>
+                </div>
+                <div class="form-group">
+                  <label>タイムゾーン</label>
+                  <select>
+                    <option selected>Asia/Tokyo (JST)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>年度開始月</label>
+                  <select>
+                    <option value="4">4月</option>
+                    <option value="1">1月</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Attendance Rules Tab -->
+          <div id="tab-attendance-rules" class="tab-content">
+            <div class="card" style="max-width: 500px;">
+              <form onsubmit="app.saveSettings(event, 'rules')">
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> 打刻修正申請を許可
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label>標準就業時間（時間）</label>
+                  <input type="number" value="8" min="1" max="12">
+                </div>
+                <div class="form-group">
+                  <label>休憩時間（分）</label>
+                  <input type="number" value="60" min="0" max="240">
+                </div>
+                <div class="form-group">
+                  <label>深夜勤務開始時刻</label>
+                  <select>
+                    <option>22:00</option>
+                    <option>23:00</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Approval Flow Tab -->
+          <div id="tab-approval-flow" class="tab-content">
+            <div class="card" style="max-width: 500px;">
+              <form onsubmit="app.saveSettings(event, 'approval')">
+                <div class="form-group">
+                  <label>有給休暇の承認者</label>
+                  <select>
+                    <option>直属上司</option>
+                    <option>部門長</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>打刻修正の承認者</label>
+                  <select>
+                    <option>管理者</option>
+                    <option>人事部</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>残業申請の承認ルール</label>
+                  <select>
+                    <option>事前申請（48時間前）</option>
+                    <option>事後申請（1週間以内）</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Notifications Tab -->
+          <div id="tab-notifications" class="tab-content">
+            <div class="card" style="max-width: 500px;">
+              <form onsubmit="app.saveSettings(event, 'notifications')">
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> 承認待ち通知
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> 残業アラート
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> 日次サマリーメール
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label>通知方法</label>
+                  <select>
+                    <option>メール</option>
+                    <option>Slack</option>
+                    <option>メール + Slack</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Security Tab -->
+          <div id="tab-security" class="tab-content">
+            <div class="card" style="max-width: 500px;">
+              <form onsubmit="app.saveSettings(event, 'security')">
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> 二要素認証（2FA）有効化
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> IPアドレス制限
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label>セッションタイムアウト（分）</label>
+                  <input type="number" value="30" min="5" max="480">
+                </div>
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" checked> ログイン履歴の記録
+                  </label>
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div id="logoutModal" class="modal-overlay" onclick="if(event.target === this) app.closeModal('logoutModal')">
+    <div class="modal">
+      <div class="modal-header">ログアウト</div>
+      <p>ログアウトしますか？</p>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="app.closeModal('logoutModal')">キャンセル</button>
+        <button class="btn btn-danger" onclick="app.logout()">ログアウト</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addMemberModal" class="modal-overlay" onclick="if(event.target === this) app.closeModal('addMemberModal')">
+    <div class="modal">
+      <div class="modal-header">メンバーを追加</div>
+      <form onsubmit="app.addMember(event)">
+        <div class="form-group">
+          <label>名前</label>
+          <input type="text" id="newMemberName" required>
+        </div>
+        <div class="form-group">
+          <label>メールアドレス</label>
+          <input type="email" id="newMemberEmail" required>
+        </div>
+        <div class="form-group">
+          <label>部門</label>
+          <select id="newMemberDept" required>
+            <option value="開発部">開発部</option>
+            <option value="営業部">営業部</option>
+            <option value="人事部">人事部</option>
+            <option value="総務部">総務部</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>役職</label>
+          <select id="newMemberPosition" required>
+            <option value="一般社員">一般社員</option>
+            <option value="主任">主任</option>
+            <option value="課長">課長</option>
+            <option value="部長">部長</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('addMemberModal')">キャンセル</button>
+          <button type="submit" class="btn btn-primary">追加</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const app = {
+      currentUser: null,
+      currentPage: 'stamp',
+      workState: 'out',
+      workLog: [],
+      inTime: null,
+      outTime: null,
+      breakStart: null,
+      breakDuration: 0,
+      batchApproveMode: false,
+      selectedApprovals: new Set(),
+      currentApprovalsFilter: 'all',
+      memberCurrentPage: 1,
+      membersPerPage: 10,
+      allMembers: [],
+      adminMenuExpanded: false,
+
+      employees: [
+        { id: 'emp001', name: '田中太郎', role: 'employee', department: '開発部', email: 'tanaka@example.com', position: '一般社員' },
+        { id: 'emp002', name: '佐藤花子', role: 'admin', department: '総務部', email: 'sato@example.com', position: '管理者' },
+        { id: 'emp003', name: '鈴木次郎', role: 'hr', department: '人事部', email: 'suzuki@example.com', position: '人事' },
+        { id: 'emp004', name: '山田太郎', role: 'employee', department: '開発部', email: 'yamada@example.com', position: '主任' },
+        { id: 'emp005', name: '鈴木美咲', role: 'employee', department: '営業部', email: 'suzuki-m@example.com', position: '一般社員' },
+        { id: 'emp006', name: '伊藤健太', role: 'employee', department: '開発部', email: 'ito@example.com', position: '課長' },
+        { id: 'emp007', name: '高橋由紀', role: 'employee', department: '営業部', email: 'takahashi@example.com', position: '一般社員' },
+        { id: 'emp008', name: '斎藤花子', role: 'employee', department: '人事部', email: 'saito@example.com', position: '課長' },
+        { id: 'emp009', name: '池田太郎', role: 'employee', department: '総務部', email: 'ikeda@example.com', position: '一般社員' },
+        { id: 'emp010', name: '中村美優', role: 'employee', department: '開発部', email: 'nakamura@example.com', position: '一般社員' },
+      ],
+
+      approvals: [
+        { id: 1, user: '山田太郎', type: 'paid-leave', date: '2026-03-06', details: '2026年3月6日（金）', status: 'pending', reason: '個人的な用務' },
+        { id: 2, user: '鈴木美咲', type: 'paid-leave', date: '2026-03-07', details: '2026年3月7日（土）', status: 'pending', reason: '医師の診察' },
+        { id: 3, user: '伊藤健太', type: 'time-correction', date: '2026-03-05', details: '出勤：09:30 → 09:00', status: 'pending', reason: 'システムエラー' },
+        { id: 4, user: '高橋由紀', type: 'overtime', date: '2026-03-04', details: '残業申請 4時間', status: 'approved', reason: 'プロジェクト対応' },
+        { id: 5, user: '斎藤花子', type: 'special', date: '2026-03-03', details: '特別休暇申請', status: 'approved', reason: 'パートナーの出産' },
+        { id: 6, user: '池田太郎', type: 'paid-leave', date: '2026-03-10', details: '2026年3月10日（火）', status: 'pending', reason: 'リフレッシュ休暇' },
+        { id: 7, user: '中村美優', type: 'time-correction', date: '2026-03-04', details: '退勤：18:30 → 18:45', status: 'rejected', reason: 'システムログエラー' },
+        { id: 8, user: '佐藤花子', type: 'overtime', date: '2026-03-06', details: '残業申請 2時間', status: 'pending', reason: 'クライアント対応' },
+      ],
+
+      dailyRecords: [
+        { date: '2026-03-06', inTime: '09:00', outTime: '18:00', hours: 8, status: '出勤中' },
+        { date: '2026-03-05', inTime: '08:45', outTime: '19:30', hours: 10.5, status: '完了' },
+        { date: '2026-03-04', inTime: '09:15', outTime: '18:15', hours: 9, status: '完了' },
+        { date: '2026-03-03', inTime: '08:30', outTime: '17:45', hours: 9.25, status: '完了' },
+        { date: '2026-03-02', inTime: '休暇', outTime: '-', hours: 0, status: '有給休暇' },
+        { date: '2026-03-01', inTime: '09:00', outTime: '18:00', hours: 8, status: '完了' },
+      ],
+
+      weeklyData: [
+        { day: '月', hours: 8 },
+        { day: '火', hours: 9 },
+        { day: '水', hours: 8.5 },
+        { day: '木', hours: 10 },
+        { day: '金', hours: 8 },
+      ],
+
+      overtimeData: {
+        depts: [
+          { name: '開発部', hours: 45 },
+          { name: '営業部', hours: 38 },
+          { name: '人事部', hours: 20 },
+          { name: '総務部', hours: 35 },
+        ],
+        employees: [
+          { id: 'emp004', name: '山田太郎', hours: 24.5, dept: '開発部' },
+          { id: 'emp005', name: '鈴木美咲', hours: 22.0, dept: '営業部' },
+          { id: 'emp006', name: '伊藤健太', hours: 20.3, dept: '開発部' },
+          { id: 'emp010', name: '中村美優', hours: 18.5, dept: '開発部' },
+          { id: 'emp007', name: '高橋由紀', hours: 16.2, dept: '営業部' },
+        ],
+        monthly: [
+          { month: '10月', hours: 142 },
+          { month: '11月', hours: 168 },
+          { month: '12月', hours: 195 },
+          { month: '1月', hours: 176 },
+          { month: '2月', hours: 149 },
+          { month: '3月', hours: 156 },
+        ],
+      },
+
+      login(user) {
+        this.currentUser = user;
+        this.resetWorkState();
+        this.showMainLayout();
+        this.updateHeader();
+        this.initializeData();
+        this.startClock();
+        this.showEmployeeOrAdminNav();
+      },
+
+      logout() {
+        this.currentUser = null;
+        this.closeModal('logoutModal');
+        document.getElementById('loginPage').classList.add('active');
+        document.getElementById('mainLayout').style.display = 'none';
+        this.goToPage('stamp');
+      },
+
+      showMainLayout() {
+        document.getElementById('loginPage').classList.remove('active');
+        document.getElementById('mainLayout').style.display = 'flex';
+      },
+
+      showEmployeeOrAdminNav() {
+        const isAdmin = this.currentUser.role === 'admin' || this.currentUser.role === 'hr';
+        document.getElementById('employeeNav').style.display = isAdmin ? 'none' : 'block';
+        document.getElementById('adminNav').style.display = isAdmin ? 'block' : 'none';
+      },
+
+      goToPage(pageName) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const pageElement = document.getElementById(pageName + 'Page');
+        if (pageElement) {
+          pageElement.classList.add('active');
+        }
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+          if (item.dataset.page === pageName) {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+
+        const titles = {
+          'stamp': '打刻',
+          'daily': '日次一覧',
+          'monthly': '月次サマリ',
+          'requests': '申請',
+          'admin-dashboard': 'ダッシュボード',
+          'approvals': '承認管理',
+          'members': 'メンバー管理',
+          'overtime': '残業レポート',
+          'settings': '設定'
+        };
+        document.getElementById('pageTitle').textContent = titles[pageName] || pageName;
+        this.currentPage = pageName;
+
+        if (pageName === 'daily') {
+          this.renderDailyTable();
+        } else if (pageName === 'monthly') {
+          this.renderMonthly();
+        } else if (pageName === 'approvals') {
+          this.renderApprovals();
+        } else if (pageName === 'members') {
+          this.loadMembers();
+        } else if (pageName === 'overtime') {
+          this.renderOvertimePage();
+        } else if (pageName === 'admin-dashboard') {
+          this.renderAdminDashboard();
+        }
+      },
+
+      toggleAdminMenu() {
+        this.adminMenuExpanded = !this.adminMenuExpanded;
+        const submenu = document.getElementById('adminSubmenu');
+        const toggle = document.getElementById('adminMenuToggle');
+        if (this.adminMenuExpanded) {
+          submenu.classList.add('expanded');
+          toggle.textContent = '▲';
+        } else {
+          submenu.classList.remove('expanded');
+          toggle.textContent = '▼';
+        }
+      },
+
+      updateHeader() {
+        if (this.currentUser) {
+          document.getElementById('currentUser').textContent = `${this.currentUser.name} (${this.currentUser.department})`;
+        }
+      },
+
+      startClock() {
+        setInterval(() => {
+          const now = new Date();
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          const seconds = String(now.getSeconds()).padStart(2, '0');
+
+          document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
+
+          if (this.currentPage === 'stamp') {
+            document.getElementById('clockTime').textContent = `${hours}:${minutes}:${seconds}`;
+            document.getElementById('clockDate').textContent = this.formatDate(now);
+          }
+        }, 1000);
+      },
+
+      formatDate(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayName = dayNames[date.getDay()];
+        return `${year}年${month}月${day}日（${dayName}）`;
+      },
+
+      resetWorkState() {
+        this.workState = 'out';
+        this.workLog = [];
+        this.inTime = null;
+        this.outTime = null;
+        this.breakStart = null;
+        this.breakDuration = 0;
+      },
+
+      stamp(action) {
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        if (action === 'in') {
+          this.workState = 'in';
+          this.inTime = now;
+          this.workLog.push({ action: '出勤', time: timeStr });
+          this.updateStampUI();
+          this.showToast('出勤しました');
+        } else if (action === 'out') {
+          this.workState = 'out';
+          this.outTime = now;
+          this.workLog.push({ action: '退勤', time: timeStr });
+          this.updateStampUI();
+          this.showToast('退勤しました');
+        } else if (action === 'break') {
+          this.workState = 'break';
+          this.breakStart = now;
+          this.workLog.push({ action: '休憩開始', time: timeStr });
+          this.updateStampUI();
+          this.showToast('休憩を開始しました');
+        } else if (action === 'resume') {
+          if (this.breakStart) {
+            this.breakDuration += now - this.breakStart;
+            this.breakStart = null;
+          }
+          this.workState = 'in';
+          this.workLog.push({ action: '休憩終了', time: timeStr });
+          this.updateStampUI();
+          this.showToast('休憩を終了しました');
+        }
+      },
+
+      updateStampUI() {
+        const statusText = {
+          'out': '未出勤',
+          'in': '勤務中',
+          'break': '休憩中'
+        };
+        document.getElementById('currentStatus').textContent = statusText[this.workState];
+        document.getElementById('inTime').textContent = this.inTime ? this.formatTime(this.inTime) : '-';
+        document.getElementById('outTime').textContent = this.outTime ? this.formatTime(this.outTime) : '-';
+
+        if (this.inTime && this.outTime) {
+          const diff = this.outTime - this.inTime - this.breakDuration;
+          const hours = Math.floor(diff / 3600000);
+          const mins = Math.floor((diff % 3600000) / 60000);
+          document.getElementById('workHours').textContent = `${hours}時間${mins}分`;
+        }
+
+        document.getElementById('stampInBtn').disabled = this.workState !== 'out';
+        document.getElementById('stampOutBtn').disabled = this.workState === 'out' || this.workState === 'break';
+        document.getElementById('stampBreakBtn').disabled = this.workState !== 'in';
+        document.getElementById('stampResumeBtn').disabled = this.workState !== 'break';
+
+        this.renderWorkLog();
+      },
+
+      formatTime(date) {
+        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+      },
+
+      renderWorkLog() {
+        const container = document.getElementById('workLogContainer');
+        container.innerHTML = this.workLog.map(log =>
+          `<div class="log-item">
+            <span>${log.action}</span>
+            <span class="log-time">${log.time}</span>
+          </div>`
+        ).join('');
+      },
+
+      initializeData() {
+        this.allMembers = [...this.employees];
+      },
+
+      renderDailyTable() {
+        const tbody = document.getElementById('dailyTableBody');
+        tbody.innerHTML = this.dailyRecords.map(record => `
+          <tr>
+            <td>${record.date}</td>
+            <td>${record.inTime}</td>
+            <td>${record.outTime}</td>
+            <td>${record.hours}h</td>
+            <td><span class="badge badge-success">${record.status}</span></td>
+          </tr>
+        `).join('');
+      },
+
+      renderMonthly() {
+        document.getElementById('kpi-days').textContent = '20';
+        document.getElementById('kpi-hours').textContent = '160h';
+        document.getElementById('kpi-overtime').textContent = '12h';
+        document.getElementById('kpi-paid').textContent = '3日';
+        this.renderWeeklyChart();
+      },
+
+      renderWeeklyChart() {
+        const container = document.getElementById('weeklyChart');
+        const maxHours = Math.max(...this.weeklyData.map(d => d.hours));
+        container.innerHTML = this.weeklyData.map(data => `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <div class="bar" style="height: ${(data.hours / maxHours) * 100}%;"></div>
+            <div class="bar-label">${data.day}</div>
+            <div class="bar-label" style="margin-top: 4px;">${data.hours}h</div>
+          </div>
+        `).join('');
+      },
+
+      submitRequest(event) {
+        event.preventDefault();
+        this.showToast('申請を送信しました');
+        event.target.reset();
+      },
+
+      renderAdminDashboard() {
+        document.getElementById('kpi-present').textContent = '23';
+        document.getElementById('kpi-pending').textContent = '8';
+        document.getElementById('kpi-awaiting').textContent = '5';
+        document.getElementById('kpi-overtime-count').textContent = '3';
+        document.getElementById('kpi-total').textContent = '28';
+        document.getElementById('kpi-month-ot').textContent = '156h';
+        this.renderAdminWeeklyChart();
+      },
+
+      renderAdminWeeklyChart() {
+        const container = document.getElementById('adminWeeklyChart');
+        const maxHours = Math.max(...this.weeklyData.map(d => d.hours));
+        container.innerHTML = this.weeklyData.map(data => `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <div class="bar" style="height: ${(data.hours / maxHours) * 100}%;"></div>
+            <div class="bar-label">${data.day}</div>
+          </div>
+        `).join('');
+      },
+
+      filterApprovals(filter) {
+        this.currentApprovalsFilter = filter;
+        this.renderApprovals();
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+      },
+
+      renderApprovals() {
+        const filtered = this.currentApprovalsFilter === 'all'
+          ? this.approvals
+          : this.approvals.filter(a => a.type.includes(this.currentApprovalsFilter));
+
+        const container = document.getElementById('approvalsContainer');
+        container.innerHTML = filtered.map(approval => `
+          <div class="approval-card">
+            <div class="approval-header">
+              <span class="approval-type" style="color: var(--${
+                approval.type === 'paid-leave' ? 'acc' :
+                approval.type === 'time-correction' ? 'orange' :
+                approval.type === 'overtime' ? 'amber' : 'purple'
+              });">${this.getApprovalTypeName(approval.type)}</span>
+              <span class="badge ${
+                approval.status === 'pending' ? 'badge-warning' :
+                approval.status === 'approved' ? 'badge-success' : 'badge-danger'
+              }">${this.getApprovalStatusName(approval.status)}</span>
+            </div>
+            <div class="approval-user">${approval.user}</div>
+            <div class="approval-date">${approval.date}</div>
+            <div class="approval-details">${approval.details}</div>
+            <div class="approval-details" style="color: var(--t2);">理由: ${approval.reason}</div>
+            ${approval.status === 'pending' ? `
+              <div class="approval-actions">
+                <button class="btn btn-success btn-small" onclick="app.approveRequest(${approval.id})">承認</button>
+                <button class="btn btn-danger btn-small" onclick="app.rejectRequest(${approval.id})">却下</button>
+                <button class="btn btn-secondary btn-small" onclick="app.commentRequest(${approval.id})">コメント</button>
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+      },
+
+      getApprovalTypeName(type) {
+        const names = {
+          'paid-leave': '有給休暇',
+          'time-correction': '打刻修正',
+          'overtime': '残業申請',
+          'special': '特別休暇'
+        };
+        return names[type] || type;
+      },
+
+      getApprovalStatusName(status) {
+        const names = {
+          'pending': '承認待ち',
+          'approved': '承認済み',
+          'rejected': '却下'
+        };
+        return names[status] || status;
+      },
+
+      approveRequest(id) {
+        const approval = this.approvals.find(a => a.id === id);
+        if (approval) {
+          approval.status = 'approved';
+          this.renderApprovals();
+          this.showToast('承認しました');
+        }
+      },
+
+      rejectRequest(id) {
+        const approval = this.approvals.find(a => a.id === id);
+        if (approval) {
+          approval.status = 'rejected';
+          this.renderApprovals();
+          this.showToast('却下しました');
+        }
+      },
+
+      commentRequest(id) {
+        this.showToast('コメント機能は近日実装予定です');
+      },
+
+      toggleBatchApprove(checked) {
+        this.batchApproveMode = checked;
+      },
+
+      loadMembers() {
+        this.renderMembersTable();
+        this.renderMembersPagination();
+        document.getElementById('member-total').textContent = this.allMembers.length;
+        document.getElementById('member-present').textContent = '23';
+        document.getElementById('member-on-leave').textContent = '3';
+        document.getElementById('member-absent').textContent = '2';
+      },
+
+      renderMembersTable() {
+        const start = (this.memberCurrentPage - 1) * this.membersPerPage;
+        const end = start + this.membersPerPage;
+        const members = this.allMembers.slice(start, end);
+
+        const tbody = document.getElementById('membersTableBody');
+        tbody.innerHTML = members.map(member => `
+          <tr>
+            <td>${member.id}</td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="member-avatar" style="background-color: var(--acc);">${member.name.substring(0, 1)}</div>
+                ${member.name}
+              </div>
+            </td>
+            <td>${member.department}</td>
+            <td>${member.position}</td>
+            <td><span class="badge badge-info">在勤</span></td>
+            <td>
+              <button class="btn btn-secondary btn-small" onclick="app.editMember('${member.id}')">編集</button>
+            </td>
+          </tr>
+        `).join('');
+      },
+
+      renderMembersPagination() {
+        const totalPages = Math.ceil(this.allMembers.length / this.membersPerPage);
+        const container = document.getElementById('membersPagination');
+        let html = '';
+        for (let i = 1; i <= totalPages; i++) {
+          html += `<button class="pagination-btn ${i === this.memberCurrentPage ? 'active' : ''}" onclick="app.goToMemberPage(${i})">${i}</button>`;
+        }
+        container.innerHTML = html;
+      },
+
+      goToMemberPage(page) {
+        this.memberCurrentPage = page;
+        this.renderMembersTable();
+        this.renderMembersPagination();
+      },
+
+      showAddMemberModal() {
+        document.getElementById('addMemberModal').classList.add('active');
+      },
+
+      addMember(event) {
+        event.preventDefault();
+        const name = document.getElementById('newMemberName').value;
+        const email = document.getElementById('newMemberEmail').value;
+        const dept = document.getElementById('newMemberDept').value;
+        const position = document.getElementById('newMemberPosition').value;
+
+        const newId = `emp${String(this.allMembers.length + 1).padStart(3, '0')}`;
+        this.allMembers.push({
+          id: newId,
+          name,
+          email,
+          department: dept,
+          position,
+          role: 'employee'
+        });
+
+        this.loadMembers();
+        this.closeModal('addMemberModal');
+        this.showToast('メンバーを追加しました');
+        document.getElementById('addMemberModal').querySelector('form').reset();
+      },
+
+      editMember(id) {
+        this.showToast('編集機能は近日実装予定です');
+      },
+
+      renderOvertimePage() {
+        document.getElementById('ot-total-hours').textContent = '156h';
+        document.getElementById('ot-avg-hours').textContent = '5.5h';
+        document.getElementById('ot-people-count').textContent = '12';
+        document.getElementById('ot-limit').textContent = '360h';
+
+        const deptContainer = document.getElementById('deptOvertimeChart');
+        const maxDeptHours = Math.max(...this.overtimeData.depts.map(d => d.hours));
+        deptContainer.innerHTML = this.overtimeData.depts.map(dept => `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <div class="bar" style="height: ${(dept.hours / maxDeptHours) * 100}%;"></div>
+            <div class="bar-label">${dept.name}</div>
+          </div>
+        `).join('');
+
+        const heatmapContainer = document.getElementById('overtimeHeatmap');
+        const colors = ['#1c2840', '#161f30', '#0f1623', '#38bdf8', '#a78bfa'];
+        heatmapContainer.innerHTML = Array(20).fill(0).map((_, i) => {
+          const colorIdx = Math.floor(Math.random() * colors.length);
+          return `<div class="heatmap-cell" style="background-color: ${colors[colorIdx]};">${Math.random() > 0.3 ? Math.floor(Math.random() * 30) : '-'}</div>`;
+        }).join('');
+
+        const alertsContainer = document.getElementById('agreementAlerts');
+        alertsContainer.innerHTML = `
+          <div style="padding: 8px 0; color: var(--orange);">⚠ 開発部 - 45h / 60h月間上限（75%）</div>
+          <div style="padding: 8px 0; color: var(--orange);">⚠ 営業部 - 38h / 60h月間上限（63%）</div>
+          <div style="padding: 8px 0; color: var(--green);">✓ 人事部 - 20h / 60h月間上限（33%）</div>
+          <div style="padding: 8px 0; color: var(--green);">✓ 総務部 - 35h / 60h月間上限（58%）</div>
+        `;
+
+        const rankingBody = document.getElementById('overtimeRankingBody');
+        rankingBody.innerHTML = this.overtimeData.employees.map((emp, idx) => `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${emp.name}</td>
+            <td>${emp.dept}</td>
+            <td style="text-align: right; color: var(--orange);">${emp.hours}h</td>
+          </tr>
+        `).join('');
+
+        const monthlyContainer = document.getElementById('monthlyOvertimeChart');
+        const maxMonthly = Math.max(...this.overtimeData.monthly.map(m => m.hours));
+        monthlyContainer.innerHTML = this.overtimeData.monthly.map(month => `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+            <div class="bar" style="height: ${(month.hours / maxMonthly) * 100}%;"></div>
+            <div class="bar-label">${month.month}</div>
+          </div>
+        `).join('');
+      },
+
+      updateOvertimeData() {
+        this.renderOvertimePage();
+      },
+
+      exportOvertimeCSV() {
+        this.showToast('CSVをエクスポートしました');
+      },
+
+      switchSettingsTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        const tabElement = document.getElementById(`tab-${tabName}`);
+        if (tabElement) {
+          tabElement.classList.add('active');
+        }
+        event.target.classList.add('active');
+      },
+
+      saveSettings(event, section) {
+        event.preventDefault();
+        this.showToast(`${section}の設定を保存しました`);
+      },
+
+      showLogoutModal() {
+        document.getElementById('logoutModal').classList.add('active');
+      },
+
+      closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+      },
+
+      showToast(message, isError = false) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${isError ? 'error' : ''}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+    };
+
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => input.value = today);
+  </script>
+</body>
+</html>

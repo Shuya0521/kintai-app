@@ -1,0 +1,108 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/Sidebar'
+
+export default function ExportPage() {
+  const router = useRouter()
+  const [user,  setUser]  = useState<{ name: string; role: string } | null>(null)
+  const [month, setMonth] = useState('2026年3月')
+  const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    const u = sessionStorage.getItem('user')
+    if (!u) { router.push('/login'); return }
+    setUser(JSON.parse(u))
+  }, [router])
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2800)
+  }
+
+  if (!user) return null
+
+  const EXPORTS = [
+    {
+      icon: '📄', title: '自分の月次勤怠CSV',
+      desc: '給与計算連携用（弥生・freee汎用）',
+      color: 'var(--acc)', bg: 'rgba(56,189,248,.08)', border: 'rgba(56,189,248,.2)',
+      tags: ['出退勤時刻', '実働・残業時間', '月次合計行'],
+      roles: ['一般社員', '管理者', '人事'],
+    },
+    {
+      icon: '👥', title: '全社員 月次勤怠CSV',
+      desc: '給与計算システム一括取込み用',
+      color: 'var(--purple)', bg: 'rgba(167,139,250,.08)', border: 'rgba(167,139,250,.2)',
+      tags: ['社員コード付き', '部署別', '社員ごと小計'],
+      roles: ['管理者', '人事'],
+    },
+    {
+      icon: '🗂', title: '社員マスタCSV',
+      desc: '社員情報・有給残日数一覧',
+      color: 'var(--green)', bg: 'rgba(52,211,153,.08)', border: 'rgba(52,211,153,.2)',
+      tags: ['全社員', '有給残日数', '勤務形態'],
+      roles: ['管理者', '人事'],
+    },
+  ].filter(e => e.roles.includes(user.role))
+
+  return (
+    <div style={S.app}>
+      <Sidebar active="export" />
+      <main style={S.main}>
+        <div style={S.page}>
+          <div style={S.pageTitle}>CSVエクスポート</div>
+          <div style={S.pageSub}>給与計算ソフトへの取込み・バックアップ用</div>
+
+          <div style={S.monthBar}>
+            <span style={{ fontSize: 13, color: 'var(--t2)' }}>対象月</span>
+            <button style={S.monthBtn} onClick={() => setMonth('2026年2月')}>←</button>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, fontWeight: 600 }}>{month}</span>
+            <button style={S.monthBtn} onClick={() => setMonth('2026年3月')}>→</button>
+          </div>
+
+          {EXPORTS.map(e => (
+            <div key={e.title} style={S.card}>
+              <div style={S.cardInner}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: 1 }}>
+                  <span style={{ fontSize: 24 }}>{e.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: e.color, marginBottom: 4 }}>{e.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 10 }}>{e.desc}</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {e.tags.map(t => (
+                        <span key={t} style={{ fontSize: 10, padding: '1px 8px', borderRadius: 4, border: `1px solid ${e.border}`, background: e.bg, color: e.color }}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  style={{ ...S.dlBtn, borderColor: e.border, background: e.bg, color: e.color }}
+                  onClick={() => showToast(`${e.title}をダウンロードしました`)}
+                >
+                  ↓ DL
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+      {toast && <div style={S.toast}>📥 {toast}</div>}
+    </div>
+  )
+}
+
+const S: Record<string, React.CSSProperties> = {
+  app:      { display: 'flex', height: '100vh', overflow: 'hidden' },
+  main:     { flex: 1, overflowY: 'auto', background: 'var(--bg)' },
+  page:     { padding: '28px 32px' },
+  pageTitle:{ fontSize: 20, fontWeight: 700, marginBottom: 4 },
+  pageSub:  { fontSize: 13, color: 'var(--t2)', marginBottom: 24 },
+  monthBar: { display: 'flex', alignItems: 'center', gap: 12, background: 'var(--s1)', border: '1px solid var(--b)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 },
+  monthBtn: { background: 'transparent', border: '1px solid var(--b)', color: 'var(--t2)', padding: '4px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 13 },
+  card:     { background: 'var(--s1)', border: '1px solid var(--b)', borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+  cardInner:{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px' },
+  dlBtn:    { flexShrink: 0, padding: '8px 16px', borderRadius: 10, border: '1px solid', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 16 },
+  toast:    { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--s2)', border: '1px solid var(--b2)', borderRadius: 12, padding: '12px 20px', fontSize: 13, whiteSpace: 'nowrap', boxShadow: '0 8px 32px rgba(0,0,0,.5)', zIndex: 999 },
+}
