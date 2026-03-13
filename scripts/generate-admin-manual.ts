@@ -556,7 +556,7 @@ async function generateManual() {
           emptyParagraph(),
           boldBodyText("■ 管理者用アプリ（KINTAI管理画面）"),
           bodyText(
-            "統括部長・部長・課長などの管理者が、社員の勤怠確認・休暇承認・各種設定を行うためのアプリです。本マニュアルでは、この管理者用アプリの操作方法を説明します。"
+            "統括部長以上の管理者が、社員の勤怠確認・休暇承認・各種設定を行うためのアプリです。管理画面へのアクセスはシステム管理者・取締役・統括部長に限定されています。本マニュアルでは、この管理者用アプリの操作方法を説明します。"
           ),
           bodyTextRuns([
             new TextRun({
@@ -941,7 +941,7 @@ async function generateManual() {
           emptyParagraph(),
           boldBodyText("変更できる項目:"),
           bulletItem("部署: 営業部、工事部、リフォーム推進部、管理部"),
-          bulletItem("役職: 統括部長、部長、課長、リーダー、社員"),
+          bulletItem("役職: システム管理者、取締役、統括部長、部長、課長、リーダー、社員 他"),
           emptyParagraph(),
           numberedStep("③", "変更内容を確認し、【保存】ボタンをクリックします。"),
           numberedStep("④", "「保存しました」と表示されたら完了です。"),
