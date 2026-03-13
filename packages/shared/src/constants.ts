@@ -14,8 +14,8 @@ export const ROLE_HIERARCHY = [
   '社員', 'リーダー', '主査', '主事', '所長代理', '課長', '所長', '参事', '部長', '統括部長', '取締役', 'システム管理者',
 ] as const
 
-/** 管理画面にアクセスできるロール（部長より上） */
-export const ADMIN_ROLES: readonly string[] = ['システム管理者', '取締役', '統括部長']
+/** 管理画面にアクセスできるロール（部長以上） */
+export const ADMIN_ROLES: readonly string[] = ['システム管理者', '取締役', '統括部長', '部長']
 
 /** 承認権限を持つロール */
 export const APPROVER_ROLES: readonly string[] = ['システム管理者', '取締役', '統括部長', '部長']
