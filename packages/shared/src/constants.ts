@@ -94,9 +94,31 @@ export const ACCESS_TOKEN_EXPIRY = '15m'
 export const REFRESH_TOKEN_EXPIRY_DAYS = 14
 export const MAX_SESSIONS_PER_USER = 3
 
-// ── 有給休暇 法定付与日数テーブル ──────────────────
-// index = 勤続年数（0.5年単位: 0=0.5年, 1=1.5年, ..., 6=6.5年以上）
-export const PAID_LEAVE_GRANT_TABLE = [10, 11, 12, 14, 16, 18, 20] as const
+// ── 有給休暇 付与日数テーブル（就業規則 第59条準拠） ──
+// 基準日方式: 1〜6月入社→基準日6/30、7〜12月入社→基準日12/31
+// 付与日: 基準日の翌日（7/1 または 1/1）
+export const PAID_LEAVE_GRANT_TABLE = [
+  { label: '入社時', years: 0,   days: 2 },
+  { label: '６ヶ月', years: 0.5, days: 8 },
+  { label: '1年',   years: 1,   days: 11 },
+  { label: '2年',   years: 2,   days: 12 },
+  { label: '3年',   years: 3,   days: 14 },
+  { label: '4年',   years: 4,   days: 16 },
+  { label: '5年',   years: 5,   days: 18 },
+  { label: '6年以上', years: 6, days: 20 },
+] as const
+
+/** 基準日を算出（入社月で判定） */
+export function getReferenceDate(hireDate: Date): { month: number; day: number; grantMonth: number; grantDay: number } {
+  const hireMonth = hireDate.getMonth() + 1 // 1-12
+  if (hireMonth >= 1 && hireMonth <= 6) {
+    // 1月〜6月入社 → 基準日 6/30、付与日 7/1
+    return { month: 6, day: 30, grantMonth: 7, grantDay: 1 }
+  } else {
+    // 7月〜12月入社 → 基準日 12/31、付与日 1/1
+    return { month: 12, day: 31, grantMonth: 1, grantDay: 1 }
+  }
+}
 
 // ── エスカレーション ──────────────────────────────
 export const ESCALATION_TIMEOUT_HOURS = 72

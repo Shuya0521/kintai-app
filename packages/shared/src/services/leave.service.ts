@@ -1,37 +1,39 @@
 /**
- * 有給休暇管理サービス
+ * 有給休暇管理サービス（就業規則 第59条準拠）
  *
- * - FIFO消化（古い付与分から順に消化）
- * - 残日数計算
- * - 年5日取得義務モニタリング
- * - 法定付与日数テーブル
+ * ■ 付与ルール
+ *   - 入社時: 2日付与
+ *   - 基準日方式（1〜6月入社→基準日6/30 付与日7/1、7〜12月入社→基準日12/31 付与日1/1）
+ *   - 入社日〜最初の基準日が6ヶ月未満の場合、6ヶ月勤続とみなす
+ *   - 勤続年数に応じた付与: 6ヶ月→8日、1年→11日、2年→12日、3年→14日、4年→16日、5年→18日、6年以上→20日
+ *
+ * ■ 消化ルール
+ *   - FIFO方式（古い付与分から優先消化）
+ *   - 2年で失効
+ *   - 年5日取得義務モニタリング
+ *   - 半休対応（午前半休/午後半休 = 0.5日）
  */
 
 import { prisma } from '../db'
 import type { PrismaClient } from '@prisma/client'
+import { PAID_LEAVE_GRANT_TABLE, getReferenceDate } from '../constants'
 
-// ── 法定付与日数テーブル（フルタイム） ────────────────
-const GRANT_TABLE: { yearsOfService: number; days: number }[] = [
-  { yearsOfService: 0.5, days: 10 },
-  { yearsOfService: 1.5, days: 11 },
-  { yearsOfService: 2.5, days: 12 },
-  { yearsOfService: 3.5, days: 14 },
-  { yearsOfService: 4.5, days: 16 },
-  { yearsOfService: 5.5, days: 18 },
-  { yearsOfService: 6.5, days: 20 },
-]
+// ── 付与日数テーブル（就業規則 第59条） ────────────────
 
 /**
- * 勤続年数から法定付与日数を算出
+ * 勤続年数から付与日数を算出（第59条テーブル準拠）
+ *
+ * | 勤続年数 | 入社時 | 6ヶ月 | 1年 | 2年 | 3年 | 4年 | 5年 | 6年以上 |
+ * | 付与日数 |   2    |   8   |  11 |  12 |  14 |  16 |  18 |   20   |
  */
-export function getLegalGrantDays(yearsOfService: number): number {
-  // 6.5年以上は一律20日
-  for (let i = GRANT_TABLE.length - 1; i >= 0; i--) {
-    if (yearsOfService >= GRANT_TABLE[i].yearsOfService) {
-      return GRANT_TABLE[i].days
+export function getGrantDaysByTenure(yearsOfService: number): number {
+  // テーブルを逆順に走査し、該当する最大の勤続年数エントリを返す
+  for (let i = PAID_LEAVE_GRANT_TABLE.length - 1; i >= 0; i--) {
+    if (yearsOfService >= PAID_LEAVE_GRANT_TABLE[i].years) {
+      return PAID_LEAVE_GRANT_TABLE[i].days
     }
   }
-  return 0 // 0.5年未満は付与なし
+  return 0
 }
 
 /**
@@ -40,6 +42,86 @@ export function getLegalGrantDays(yearsOfService: number): number {
 export function getYearsOfService(hireDate: Date, asOf: Date = new Date()): number {
   const diff = asOf.getTime() - hireDate.getTime()
   return diff / (365.25 * 24 * 60 * 60 * 1000)
+}
+
+// ── 基準日・付与日計算 ──────────────────────────────────
+
+/**
+ * 入社日から最初の基準日を算出
+ *
+ * 第59条第2項:
+ *   (1) 1月1日〜6月30日入社 → 基準日 6月30日
+ *   (2) 7月1日〜12月31日入社 → 基準日 12月31日
+ */
+export function getFirstReferenceDate(hireDate: Date): Date {
+  const ref = getReferenceDate(hireDate)
+  const hireYear = hireDate.getFullYear()
+
+  // 同年の基準日
+  const firstRef = new Date(hireYear, ref.month - 1, ref.day)
+
+  // 入社日が基準日以降なら翌回の基準日（半年後）
+  if (hireDate > firstRef) {
+    if (ref.month === 6) {
+      return new Date(hireYear, 11, 31) // 12/31
+    } else {
+      return new Date(hireYear + 1, 5, 30) // 翌年6/30
+    }
+  }
+
+  return firstRef
+}
+
+/**
+ * 入社日から最初の付与日を算出
+ *
+ * 第59条第3項:
+ *   (1) 基準日6/30の者 → 付与日 7/1
+ *   (2) 基準日12/31の者 → 付与日 1/1
+ */
+export function getFirstGrantDate(hireDate: Date): Date {
+  const firstRef = getFirstReferenceDate(hireDate)
+  const refMonth = firstRef.getMonth() // 0-indexed
+
+  if (refMonth === 5) {
+    // 基準日6/30 → 付与日7/1
+    return new Date(firstRef.getFullYear(), 6, 1)
+  } else {
+    // 基準日12/31 → 付与日翌年1/1
+    return new Date(firstRef.getFullYear() + 1, 0, 1)
+  }
+}
+
+/**
+ * 基準日までの勤続期間が6ヶ月未満かチェック
+ * → 6ヶ月未満の場合、6ヶ月勤続とみなす（第59条第2項ただし書き）
+ */
+export function getEffectiveYearsAtGrant(hireDate: Date, grantDate: Date): number {
+  const actualYears = getYearsOfService(hireDate, grantDate)
+  // 最初の付与で6ヶ月未満の場合、6ヶ月とみなす
+  if (actualYears < 0.5) {
+    return 0.5
+  }
+  return actualYears
+}
+
+/**
+ * N回目の付与日を算出
+ *
+ * - 0回目 = 入社時（即日付与2日）
+ * - 1回目 = 最初の基準日翌日（7/1 or 1/1）
+ * - 2回目以降 = 以降毎年同じ付与日
+ */
+export function getNthGrantDate(hireDate: Date, n: number): Date {
+  if (n === 0) return new Date(hireDate) // 入社時
+
+  const firstGrant = getFirstGrantDate(hireDate)
+  if (n === 1) return firstGrant
+
+  // 2回目以降は毎年同じ月日
+  const result = new Date(firstGrant)
+  result.setFullYear(result.getFullYear() + (n - 1))
+  return result
 }
 
 // ── FIFO消化ロジック ─────────────────────────────────
@@ -228,75 +310,128 @@ export async function checkAnnual5DayObligation(
 // ── 有給年次自動付与（バッチ用） ─────────────────────
 
 /**
- * 入社日基準で有給を自動付与する（バッチジョブから呼出）
+ * 基準日方式で有給を自動付与する（バッチジョブから毎日呼出）
  *
- * 毎日実行し、本日が付与日に該当するユーザーを検出して付与する
+ * 【処理概要】
+ * 1. 入社時付与: 入社日当日に2日付与
+ * 2. 定期付与: 付与日（7/1 or 1/1）に該当する場合、勤続年数に応じた日数を付与
+ *    - 入社〜最初の基準日が6ヶ月未満 → 6ヶ月勤続とみなす（第59条第2項ただし書き）
  */
 export async function grantAnnualPaidLeave(): Promise<{
-  granted: Array<{ userId: string; employeeNumber: string; days: number }>
+  granted: Array<{ userId: string; employeeNumber: string; days: number; reason: string }>
 }> {
   const today = new Date()
+  const todayMonth = today.getMonth() + 1 // 1-12
+  const todayDate = today.getDate()
+
   const users = await prisma.user.findMany({
     where: { status: 'active' },
     select: { id: true, employeeNumber: true, hireDate: true, paidLeaveBalance: true },
   })
 
-  const granted: Array<{ userId: string; employeeNumber: string; days: number }> = []
+  const granted: Array<{ userId: string; employeeNumber: string; days: number; reason: string }> = []
 
   for (const user of users) {
     const hireDate = new Date(user.hireDate)
-    const yearsOfService = getYearsOfService(hireDate, today)
+    const hireDateStr = hireDate.toISOString().split('T')[0]
+    const todayStr = today.toISOString().split('T')[0]
 
-    // 各付与タイミングをチェック（0.5年, 1.5年, 2.5年...）
-    for (const entry of GRANT_TABLE) {
-      const grantDate = new Date(hireDate)
-      grantDate.setMonth(grantDate.getMonth() + Math.round(entry.yearsOfService * 12))
-
-      // 本日が付与日かチェック（月日が一致）
-      if (
-        grantDate.getMonth() === today.getMonth() &&
-        grantDate.getDate() === today.getDate() &&
-        yearsOfService >= entry.yearsOfService
-      ) {
-        // 既に同日の付与があるかチェック
-        const todayStr = today.toISOString().split('T')[0]
-        const existing = await prisma.paidLeaveGrant.findFirst({
-          where: {
-            userId: user.id,
-            grantDate: {
-              gte: new Date(todayStr + 'T00:00:00Z'),
-              lt: new Date(todayStr + 'T23:59:59Z'),
-            },
+    // ── 入社時付与チェック（入社日当日 → 2日） ──
+    if (hireDateStr === todayStr) {
+      const existing = await prisma.paidLeaveGrant.findFirst({
+        where: {
+          userId: user.id,
+          grantDate: {
+            gte: new Date(todayStr + 'T00:00:00Z'),
+            lt: new Date(todayStr + 'T23:59:59Z'),
           },
+        },
+      })
+
+      if (!existing) {
+        const expiresAt = new Date(today)
+        expiresAt.setFullYear(expiresAt.getFullYear() + 2)
+
+        await prisma.$transaction([
+          prisma.paidLeaveGrant.create({
+            data: {
+              userId: user.id,
+              grantDate: today,
+              grantedDays: 2,
+              expiresAt,
+            },
+          }),
+          prisma.user.update({
+            where: { id: user.id },
+            data: { paidLeaveBalance: { increment: 2 } },
+          }),
+        ])
+
+        granted.push({
+          userId: user.id,
+          employeeNumber: user.employeeNumber,
+          days: 2,
+          reason: '入社時付与',
         })
-
-        if (!existing) {
-          const expiresAt = new Date(today)
-          expiresAt.setFullYear(expiresAt.getFullYear() + 2) // 2年で時効
-
-          await prisma.$transaction([
-            prisma.paidLeaveGrant.create({
-              data: {
-                userId: user.id,
-                grantDate: today,
-                grantedDays: entry.days,
-                expiresAt,
-              },
-            }),
-            prisma.user.update({
-              where: { id: user.id },
-              data: { paidLeaveBalance: { increment: entry.days } },
-            }),
-          ])
-
-          granted.push({
-            userId: user.id,
-            employeeNumber: user.employeeNumber,
-            days: entry.days,
-          })
-        }
-        break // 同日に2回付与しない
       }
+      continue // 入社日には定期付与は行わない
+    }
+
+    // ── 定期付与チェック（付与日 = 7/1 or 1/1） ──
+    const ref = getReferenceDate(hireDate)
+
+    // 今日が付与日（7/1 or 1/1）でなければスキップ
+    if (todayMonth !== ref.grantMonth || todayDate !== ref.grantDay) {
+      continue
+    }
+
+    // 勤続年数を算出（みなし規定適用）
+    const effectiveYears = getEffectiveYearsAtGrant(hireDate, today)
+    const grantDays = getGrantDaysByTenure(effectiveYears)
+
+    if (grantDays <= 0) continue
+
+    // 入社時付与(2日)は別途行っているので、テーブル上 years=0 のエントリは除外
+    // （入社時の2日と、最初の付与日の8日は別物）
+    // 勤続6ヶ月以上（みなし含む）で初回定期付与 = 8日
+    if (effectiveYears < 0.5) continue
+
+    // 既に同日の付与があるかチェック
+    const existing = await prisma.paidLeaveGrant.findFirst({
+      where: {
+        userId: user.id,
+        grantDate: {
+          gte: new Date(todayStr + 'T00:00:00Z'),
+          lt: new Date(todayStr + 'T23:59:59Z'),
+        },
+      },
+    })
+
+    if (!existing) {
+      const expiresAt = new Date(today)
+      expiresAt.setFullYear(expiresAt.getFullYear() + 2)
+
+      await prisma.$transaction([
+        prisma.paidLeaveGrant.create({
+          data: {
+            userId: user.id,
+            grantDate: today,
+            grantedDays: grantDays,
+            expiresAt,
+          },
+        }),
+        prisma.user.update({
+          where: { id: user.id },
+          data: { paidLeaveBalance: { increment: grantDays } },
+        }),
+      ])
+
+      granted.push({
+        userId: user.id,
+        employeeNumber: user.employeeNumber,
+        days: grantDays,
+        reason: `勤続${Math.floor(effectiveYears)}年（基準日方式）`,
+      })
     }
   }
 
