@@ -166,4 +166,76 @@ describe('Attendance API', () => {
     const res = await POST(req as any)
     expect(res.status).toBe(401)
   })
+
+  it('AT-07: cross-day check-in after previous day checkout succeeds', async () => {
+    const user = await createTestUser()
+
+    // 前日のレコードを作成（出勤→退勤済み、status='done'）
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
+
+    await prisma.attendance.create({
+      data: {
+        userId: user.id,
+        date: yesterdayStr,
+        checkInTime: new Date(yesterday.setHours(9, 0, 0, 0)),
+        checkOutTime: new Date(yesterday.setHours(18, 0, 0, 0)),
+        workPlace: 'office',
+        status: 'done',
+        breakTotalMin: DEEMED_BREAK_MIN,
+        workMin: 480,
+      },
+    })
+
+    // 今日の出勤が成功することを確認
+    setAuthCookie(user.id, user.role)
+    const req = createJsonRequest('http://localhost:3000/api/attendance', {
+      action: 'in',
+      workPlace: 'office',
+    })
+    const res = await POST(req as any)
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.attendance.status).toBe('working')
+    expect(data.attendance.date).toBe(getTodayStr())
+
+    // 前日のレコードは変更されていないことを確認
+    const yesterdayRecord = await prisma.attendance.findUnique({
+      where: { userId_date: { userId: user.id, date: yesterdayStr } },
+    })
+    expect(yesterdayRecord!.status).toBe('done')
+  })
+
+  it('AT-08: GET today returns null attendance when no record exists for today', async () => {
+    const user = await createTestUser()
+
+    // 前日のレコードのみ存在
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
+
+    await prisma.attendance.create({
+      data: {
+        userId: user.id,
+        date: yesterdayStr,
+        checkInTime: new Date(yesterday.setHours(9, 0, 0, 0)),
+        checkOutTime: new Date(yesterday.setHours(18, 0, 0, 0)),
+        workPlace: 'office',
+        status: 'done',
+        breakTotalMin: DEEMED_BREAK_MIN,
+        workMin: 480,
+      },
+    })
+
+    // 今日のGETリクエストではnullが返ることを確認
+    setAuthCookie(user.id, user.role)
+    const req = new Request('http://localhost:3000/api/attendance?range=today', { method: 'GET' })
+    const res = await GET(req as any)
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.attendance).toBeNull()
+  })
 })
