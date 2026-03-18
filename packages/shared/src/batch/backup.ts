@@ -1,8 +1,8 @@
 /**
- * SQLite バックアップユーティリティ
+ * データベースバックアップユーティリティ
  *
- * VACUUM INTO を使用して安全にバックアップを作成する。
- * ファイルコピーだとWALモードで不整合が起きるため、VACUUM INTOが推奨。
+ * ローカル環境: VACUUM INTO を使用して安全にバックアップを作成
+ * Turso環境: Turso側で自動バックアップされるためスキップ
  *
  * バッチスケジュール: 毎日 03:00
  * 保持期間: 30世代（約1ヶ月分）
@@ -16,7 +16,14 @@ const DEFAULT_BACKUP_DIR = path.resolve(__dirname, '../../../../backup')
 const MAX_GENERATIONS = 30
 
 /**
- * SQLiteデータベースのバックアップを作成
+ * Turso環境かどうかを判定
+ */
+function isTursoEnvironment(): boolean {
+  return !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN)
+}
+
+/**
+ * データベースのバックアップを作成
  *
  * @param backupDir バックアップ保存先ディレクトリ（デフォルト: プロジェクトルート/backup/）
  */
@@ -25,6 +32,12 @@ export async function createBackup(backupDir?: string): Promise<{
   filePath?: string
   error?: string
 }> {
+  // Turso環境ではクラウド側で自動バックアップされるためスキップ
+  if (isTursoEnvironment()) {
+    console.log('[Backup] Turso環境のためスキップ（クラウド側で自動バックアップ）')
+    return { success: true }
+  }
+
   const dir = backupDir || DEFAULT_BACKUP_DIR
 
   try {

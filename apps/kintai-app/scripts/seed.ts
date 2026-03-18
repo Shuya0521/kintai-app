@@ -3,9 +3,22 @@
  * 実行: npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/seed.ts
  */
 import { PrismaClient } from '@prisma/client'
+import { PrismaLibSQL } from '@prisma/adapter-libsql'
+import { createClient } from '@libsql/client'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+function createPrisma() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL
+  const tursoToken = process.env.TURSO_AUTH_TOKEN
+  if (tursoUrl && tursoToken) {
+    const libsql = createClient({ url: tursoUrl, authToken: tursoToken })
+    const adapter = new PrismaLibSQL(libsql)
+    return new PrismaClient({ adapter } as any)
+  }
+  return new PrismaClient()
+}
+
+const prisma = createPrisma()
 
 async function main() {
   console.log('🌱 初期データを投入しています...')
