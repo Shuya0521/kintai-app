@@ -17,11 +17,17 @@ export default function LoginPage() {
   const router   = useRouter()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
   const [quickUsers, setQuickUsers] = useState<QuickUser[]>([])
 
   useEffect(() => {
+    const saved = localStorage.getItem('kintai_app_email')
+    if (saved) {
+      setEmail(saved)
+      setRemember(true)
+    }
     fetch('/api/auth/quicklogin')
       .then(r => r.json())
       .then(data => setQuickUsers(data.users || []))
@@ -31,6 +37,12 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setLoading(true)
     setError('')
+
+    if (remember) {
+      localStorage.setItem('kintai_app_email', email)
+    } else {
+      localStorage.removeItem('kintai_app_email')
+    }
 
     if (!email.trim() || !password.trim()) {
       setError('メールアドレスとパスワードを入力してください')
@@ -91,6 +103,16 @@ export default function LoginPage() {
           placeholder="••••••••"
           autoComplete="current-password"
         />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--t2)', cursor: 'pointer', marginBottom: 8 }}>
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: 'var(--acc)' }}
+          />
+          メールアドレスを記憶する
+        </label>
 
         <button
           style={{ ...S.loginBtn, opacity: loading ? 0.7 : 1 }}

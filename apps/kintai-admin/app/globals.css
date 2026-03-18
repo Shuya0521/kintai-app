@@ -37,6 +37,17 @@ body {
 /* Sidebar offset for main content */
 main { margin-left: var(--sidebar-w); }
 
+/* Desktop: show sidebar, hide bottom nav */
+.desktop-sidebar { display: flex !important; }
+.mobile-nav { display: none !important; }
+.mobile-overlay { display: none !important; }
+
+@media (max-width: 768px) {
+  .desktop-sidebar { display: none !important; }
+  .mobile-nav { display: flex !important; }
+  .mobile-overlay { display: block !important; }
+}
+
 input, select, textarea { font-size: 16px !important; }
 @media (min-width: 769px) {
   input, select, textarea { font-size: inherit !important; }

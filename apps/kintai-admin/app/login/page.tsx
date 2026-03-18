@@ -1,19 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function AdminLogin() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('kintai_admin_email')
+    if (saved) {
+      setEmail(saved)
+      setRemember(true)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+
+    if (remember) {
+      localStorage.setItem('kintai_admin_email', email)
+    } else {
+      localStorage.removeItem('kintai_admin_email')
+    }
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -102,6 +117,16 @@ export default function AdminLogin() {
               }}
             />
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--t2)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: 'var(--acc)' }}
+            />
+            メールアドレスを記憶する
+          </label>
 
           {error && (
             <div style={{

@@ -42,7 +42,7 @@ export default function AdminSidebar({ userName, userRole }: AdminSidebarProps) 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside style={{
+      <aside className="desktop-sidebar" style={{
         width: 220,
         height: '100vh',
         position: 'fixed',
@@ -50,10 +50,9 @@ export default function AdminSidebar({ userName, userRole }: AdminSidebarProps) 
         top: 0,
         background: 'var(--s1)',
         borderRight: '1px solid var(--b)',
-        display: 'flex',
         flexDirection: 'column',
         zIndex: 100,
-      }} className="hidden md:flex">
+      }}>
         <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--b)' }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--acc)' }}>KINTAI</div>
           <div style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>ADMIN</div>
@@ -108,7 +107,7 @@ export default function AdminSidebar({ userName, userRole }: AdminSidebarProps) 
 
       {/* Mobile Bottom Nav */}
       <nav
-        className="md:hidden"
+        className="mobile-nav"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -167,7 +166,7 @@ export default function AdminSidebar({ userName, userRole }: AdminSidebarProps) 
       {/* Mobile "More" overlay */}
       {mobileOpen && (
         <div
-          className="md:hidden"
+          className="mobile-overlay"
           style={{
             position: 'fixed',
             inset: 0,
