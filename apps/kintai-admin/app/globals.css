@@ -34,8 +34,8 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Sidebar offset for main content */
-main { margin-left: var(--sidebar-w); }
+/* Sidebar offset for main content + scrollable */
+main { margin-left: var(--sidebar-w); height: 100vh; overflow-y: auto; }
 
 /* Desktop: show sidebar, hide bottom nav */
 .desktop-sidebar { display: flex !important; }
