@@ -34,6 +34,8 @@ export * from './formatters'
 // ── Services ───────────────────────────────────
 export * from './services/leave.service'
 export * from './services/overtime.service'
+// NOTE: Email service is imported directly from '@kintai/shared/src/services/email.service'
+// to avoid loading nodemailer in client bundles (kintai-app frontend)
 
 // ── Audit ──────────────────────────────────────
 export * from './audit/logger'

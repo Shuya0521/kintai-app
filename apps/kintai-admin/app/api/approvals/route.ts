@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma, isApproverRole, LEAVE_TYPE_DAYS, jsonOk, jsonError } from '@kintai/shared'
+import { sendMail, approvalResultEmail } from '@kintai/shared/src/services/email.service'
 import { getCurrentAdmin } from '@/lib/auth'
 
 export async function GET() {
@@ -61,6 +62,19 @@ export async function POST(req: NextRequest) {
         }
       }
     })
+
+    // メール通知（非同期、失敗してもレスポンスには影響しない）
+    const requester = await prisma.user.findUnique({ where: { id: approval.requesterId } })
+    if (requester) {
+      const { subject, html } = approvalResultEmail({
+        requesterName: `${requester.lastName} ${requester.firstName}`,
+        requestType: approval.requestType,
+        result: newStatus as 'approved' | 'rejected',
+        comment: comment || '',
+        approverName: `${me.lastName} ${me.firstName}`,
+      })
+      sendMail(requester.email, subject, html, 'approvalResult').catch(() => {})
+    }
 
     return jsonOk({ message: action === 'approve' ? '承認しました' : '却下しました' })
   } catch (error) {

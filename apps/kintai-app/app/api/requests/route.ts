@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
+import { sendMail, approvalRequestEmail } from '@kintai/shared/src/services/email.service'
+import { LEAVE_TYPE_LABELS } from '@kintai/shared'
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser()
@@ -51,6 +53,20 @@ export async function POST(req: NextRequest) {
           status: 'pending',
         },
       })
+
+      // 承認者にメール通知（非同期）
+      const approver = await prisma.user.findUnique({ where: { id: approverId } })
+      if (approver) {
+        const typeLabel = LEAVE_TYPE_LABELS[type] || type
+        const { subject, html } = approvalRequestEmail({
+          approverName: `${approver.lastName} ${approver.firstName}`,
+          requesterName: `${me.lastName} ${me.firstName}`,
+          requestType: 'leave',
+          details: `${typeLabel}: ${startDate}${startDate !== endDate ? ` 〜 ${endDate}` : ''}${reason ? `<br/>理由: ${reason}` : ''}`,
+          adminUrl: process.env.ADMIN_URL || 'http://localhost:3001',
+        })
+        sendMail(approver.email, subject, html, 'approvalRequest').catch(() => {})
+      }
     } else {
       // Auto-approve if no approver (e.g. 統括部長)
       await prisma.leaveRequest.update({

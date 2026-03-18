@@ -23,6 +23,10 @@ const defaults = {
   paidLeaveApproval: true, stampCorrectionApproval: true, overtimeApproval: false,
   approvalSlaDays: 3,
   emailNotifications: true, pendingApprovalReminder: true, overtimeWarningThreshold: 40,
+  notifyApprovalRequest: true, notifyApprovalResult: true,
+  notifyMissedStamp: true, notifyOvertimeWarning: true,
+  smtpHost: '', smtpPort: 587, smtpSecure: false, smtpUser: '', smtpPass: '',
+  smtpFromAddress: '', smtpFromName: '勤怠管理システム',
 }
 
 type Settings = typeof defaults
@@ -131,11 +135,65 @@ export default function SettingsPage() {
     ),
     notification: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {field('メール通知', <Toggle value={settings.emailNotifications}
+        {field('メール通知（全体）', <Toggle value={settings.emailNotifications}
           onChange={v => set('emailNotifications', v)} />)}
-        {field('未承認リマインダー', <Toggle value={settings.pendingApprovalReminder}
-          onChange={v => set('pendingApprovalReminder', v)} />)}
-        {field('残業警告閾値 (時間)', num('overtimeWarningThreshold'))}
+
+        <div style={{ borderTop: '1px solid var(--b)', paddingTop: 16, marginTop: 4 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>通知タイプ別設定</div>
+          <div style={{ opacity: settings.emailNotifications ? 1 : 0.4, pointerEvents: settings.emailNotifications ? 'auto' : 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {field('承認依頼（申請時→承認者へ）', <Toggle value={settings.notifyApprovalRequest}
+              onChange={v => set('notifyApprovalRequest', v)} />)}
+            {field('承認結果（承認/却下→申請者へ）', <Toggle value={settings.notifyApprovalResult}
+              onChange={v => set('notifyApprovalResult', v)} />)}
+            {field('打刻漏れアラート（→本人へ）', <Toggle value={settings.notifyMissedStamp}
+              onChange={v => set('notifyMissedStamp', v)} />)}
+            {field('残業警告（→本人へ）', <Toggle value={settings.notifyOvertimeWarning}
+              onChange={v => set('notifyOvertimeWarning', v)} />)}
+            {field('未承認リマインダー', <Toggle value={settings.pendingApprovalReminder}
+              onChange={v => set('pendingApprovalReminder', v)} />)}
+            {field('残業警告閾値 (時間)', num('overtimeWarningThreshold'))}
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--b)', paddingTop: 16, marginTop: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>SMTP設定</div>
+          {field('SMTPホスト', <input style={inputStyle} value={settings.smtpHost} placeholder="smtp.gmail.com"
+            onChange={e => set('smtpHost', e.target.value)} />)}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {field('ポート', <input type="number" style={inputStyle} value={settings.smtpPort}
+              onChange={e => set('smtpPort', Number(e.target.value))} />)}
+            {field('SSL/TLS (465)', <Toggle value={settings.smtpSecure}
+              onChange={v => set('smtpSecure', v)} />)}
+          </div>
+          {field('ユーザー名', <input style={inputStyle} value={settings.smtpUser} placeholder="user@example.com"
+            onChange={e => set('smtpUser', e.target.value)} />)}
+          {field('パスワード', <input type="password" style={inputStyle} value={settings.smtpPass}
+            onChange={e => set('smtpPass', e.target.value)} />)}
+          {field('送信元アドレス', <input style={inputStyle} value={settings.smtpFromAddress} placeholder="noreply@company.com"
+            onChange={e => set('smtpFromAddress', e.target.value)} />)}
+          {field('送信者名', <input style={inputStyle} value={settings.smtpFromName}
+            onChange={e => set('smtpFromName', e.target.value)} />)}
+
+          <button
+            type="button"
+            onClick={async () => {
+              setToast('テスト送信中...')
+              try {
+                const res = await fetch('/api/settings/test-email', { method: 'POST' })
+                const data = await res.json()
+                setToast(data.success ? 'テストメール送信成功' : `送信失敗: ${data.error}`)
+              } catch { setToast('テストメール送信に失敗しました') }
+              setTimeout(() => setToast(''), 4000)
+            }}
+            style={{
+              marginTop: 8, padding: '8px 20px', borderRadius: 6,
+              border: '1px solid var(--acc)', background: 'transparent',
+              color: 'var(--acc)', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            }}
+          >
+            テストメール送信
+          </button>
+        </div>
       </div>
     ),
   }

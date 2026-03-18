@@ -19,7 +19,23 @@ export async function POST(req: NextRequest) {
   if (!me) return jsonError('権限がありません', 403)
 
   try {
-    const { key, value } = await req.json()
+    const body = await req.json()
+
+    // バルク保存: オブジェクトのキー・バリューを一括保存
+    if (body && typeof body === 'object' && !body.key) {
+      const entries = Object.entries(body)
+      for (const [key, value] of entries) {
+        await prisma.setting.upsert({
+          where: { key },
+          create: { key, value: JSON.stringify(value) },
+          update: { value: JSON.stringify(value) },
+        })
+      }
+      return jsonOk({ message: '設定を保存しました' })
+    }
+
+    // 単一保存（後方互換）
+    const { key, value } = body
     if (!key) return jsonError('設定キーが必要です', 400)
 
     await prisma.setting.upsert({
