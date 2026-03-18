@@ -20,6 +20,11 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  --sidebar-w: 220px;
+}
+
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,6 +56,9 @@ input, select, textarea {
     font-size: inherit !important;
   }
 }
+
+/* Sidebar offset for main content */
+main { margin-left: var(--sidebar-w); }
 
 /* Hide scrollbar on mobile for cleaner look */
 @media (max-width: 768px) {
