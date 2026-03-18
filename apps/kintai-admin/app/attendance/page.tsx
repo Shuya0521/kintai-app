@@ -91,7 +91,7 @@ export default function AttendancePage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminSidebar userName={user.name} userRole={user.role} />
-      <main style={{ flex: 1, padding: 24 }} className="md:ml-[220px] ml-0 pb-24 md:pb-6">
+      <main style={{ flex: 1, padding: 24 }} className="pb-24 md:pb-6">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700 }}>全社員 勤怠一覧</h1>
           <button

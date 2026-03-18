@@ -201,7 +201,7 @@ export default function SettingsPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <AdminSidebar userName={user.name} userRole={user.role} />
-      <main style={{ flex: 1, padding: 24 }} className="md:ml-[220px] ml-0 pb-24 md:pb-6">
+      <main style={{ flex: 1, padding: 24 }} className="pb-24 md:pb-6">
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>設定</h1>
 
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
