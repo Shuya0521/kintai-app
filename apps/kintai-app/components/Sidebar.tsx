@@ -64,7 +64,7 @@ export default function Sidebar({ active }: { active: string }) {
             <div
               key={n.id}
               style={{ ...M.tab, color: active === n.id ? 'var(--acc)' : 'var(--t3)' }}
-              onClick={() => router.push(`/${n.id}`)}
+              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}
             >
               <span style={M.tabIcon}>{n.icon}</span>
               <span style={M.tabLabel}>{n.label}</span>
@@ -97,7 +97,7 @@ export default function Sidebar({ active }: { active: string }) {
             <div
               key={n.id}
               style={{ ...S.item, ...(active === n.id ? S.itemActive : {}) }}
-              onClick={() => router.push(`/${n.id}`)}
+              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}
             >
               <span style={S.icon}>{n.icon}</span>
               <span style={{ flex: 1 }}>{n.label}</span>
