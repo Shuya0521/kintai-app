@@ -39,7 +39,7 @@ export type WorkPlace = (typeof WORK_PLACES)[number]
 export const DEEMED_BREAK_MIN = 60
 
 // ── 勤怠ステータス ────────────────────────────────
-export const ATTENDANCE_STATUSES = ['working', 'done', 'holiday'] as const
+export const ATTENDANCE_STATUSES = ['none', 'working', 'done', 'holiday'] as const
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
 
 // ── 休暇タイプ ────────────────────────────────────

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { apiGet, apiPost } from '@/lib/api'
+import { getTodayStr } from '@kintai/shared'
 
 type StampStatus = 'none' | 'working' | 'done'
 type WorkType    = 'office' | 'remote'
@@ -42,44 +43,52 @@ export default function StampPage() {
     loadUser()
   }, [router])
 
+  // ── 日付変更検知用 state ─────────────────────────────
+  const [currentDate, setCurrentDate] = useState(getTodayStr())
+
   // ── 時計 ──────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
       const now = new Date()
       setClock(now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
       setDate(now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }))
+      // 日付が変わったら検知して勤怠データを再取得させる
+      const today = getTodayStr()
+      if (today !== currentDate) {
+        setCurrentDate(today)
+      }
     }
     tick()
     const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [currentDate])
 
   // ── 今日の勤務データ取得 ────────────────────────────
-  useEffect(() => {
-    const loadTodayAttendance = async () => {
-      try {
-        const data = await apiGet('/api/attendance?range=today')
-        const att = data?.attendance
-        if (att) {
-          setStamp(s => ({
-            ...s,
-            inTime: att.checkInTime ? new Date(att.checkInTime).getTime() : null,
-            outTime: att.checkOutTime ? new Date(att.checkOutTime).getTime() : null,
-            breakTotal: att.breakTotalMin || 0,
-            status: att.status || 'none',
-            workType: att.workPlace || 'office',
-          }))
-        }
-        // ソーシャルプルーフ取得
-        if (data?.socialProof) {
-          setSocialProof(data.socialProof)
-        }
-      } catch {
-        // Silent fail - use local state default
+  const loadTodayAttendance = useCallback(async () => {
+    try {
+      const data = await apiGet('/api/attendance?range=today')
+      const att = data?.attendance
+      // レコードがない場合（null）は初期状態にリセット
+      setStamp(s => ({
+        ...s,
+        inTime: att?.checkInTime ? new Date(att.checkInTime).getTime() : null,
+        outTime: att?.checkOutTime ? new Date(att.checkOutTime).getTime() : null,
+        breakTotal: att?.breakTotalMin || 0,
+        status: att?.status || 'none',
+        workType: att?.workPlace || 'office',
+      }))
+      // ソーシャルプルーフ取得
+      if (data?.socialProof) {
+        setSocialProof(data.socialProof)
       }
+    } catch {
+      // Silent fail - use local state default
     }
-    loadTodayAttendance()
   }, [])
+
+  useEffect(() => {
+    loadTodayAttendance()
+  }, [currentDate, loadTodayAttendance])
 
   // ── トースト ──────────────────────────────────────
   const showToast = (msg: string, icon = '✅') => {
