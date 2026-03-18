@@ -33,6 +33,7 @@ export default function AttendancePage() {
   const [department, setDepartment] = useState('')
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [csvExporting, setCsvExporting] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -84,6 +85,34 @@ export default function AttendancePage() {
     }
   }
 
+  const handleCsvExport = async () => {
+    setCsvExporting(true)
+    try {
+      const [y, m] = month.split('-').map(Number)
+      const res = await fetch('/api/csv/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: y, month: m, department: department || undefined }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(err.error || 'CSV出力に失敗しました')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `勤怠データ_${y}年${String(m).padStart(2, '0')}月.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('CSV出力に失敗しました')
+    } finally {
+      setCsvExporting(false)
+    }
+  }
+
   if (!user) return null
 
   const [year, mon] = month.split('-').map(Number)
@@ -94,6 +123,28 @@ export default function AttendancePage() {
       <main style={{ flex: 1, padding: 24 }} className="pb-24 md:pb-6">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700 }}>全社員 勤怠一覧</h1>
+          <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={handleCsvExport}
+            disabled={csvExporting || loading}
+            style={{
+              padding: '8px 20px',
+              background: csvExporting ? 'var(--s2)' : 'var(--acc)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: csvExporting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              opacity: csvExporting ? 0.6 : 1,
+              transition: 'all 0.2s',
+            }}
+          >
+            {csvExporting ? '出力中...' : '📄 CSV出力'}
+          </button>
           <button
             onClick={handleExcelExport}
             disabled={exporting || loading}
@@ -122,6 +173,7 @@ export default function AttendancePage() {
               <>📥 Excel出力</>
             )}
           </button>
+          </div>
         </div>
 
         {/* Controls */}
