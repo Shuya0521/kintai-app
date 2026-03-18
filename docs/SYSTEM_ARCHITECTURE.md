@@ -1,6 +1,6 @@
 # 勤怠管理システム - システム設計書
 
-> **最終更新日:** 2026-03-13（権限設計更新）
+> **最終更新日:** 2026-03-18（メール通知・みなし休憩控除追加）
 > **管理者:** 小田原 秀哉（システム管理者）
 > **プロジェクト名:** kintai-monorepo
 
@@ -305,7 +305,7 @@
 | **MissedStampAlert** | 打刻漏れアラート | userId, date, type (no_checkout/no_record/no_break_end) |
 | **Holiday** | 祝日マスタ | date, name, year |
 | **AuditLog** | 監査ログ | userId, action, targetType, targetId, detail |
-| **Setting** | システム設定 | key, value |
+| **Setting** | システム設定（SMTP設定、通知タイプ別設定） | key, value |
 
 ### 5.3 主要インデックス
 
@@ -398,6 +398,7 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 | `/api/admin` | GET/POST | ○ | 管理者専用操作 |
 | `/api/settings` | GET | ○ | システム設定取得 |
 | `/api/settings` | PATCH | ○ | システム設定変更 |
+| `/api/settings/test-email` | POST | ○ | テストメール送信 |
 
 ---
 
@@ -409,7 +410,7 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 /login          ログイン画面
 /register       セルフ登録画面
 /               ホーム（ダッシュボード）
-/stamp          打刻画面（ランディング、時計 + 出勤/在宅/退勤ボタン）
+/stamp          打刻画面（時計 + 出勤/在宅/退勤ボタン、みなし休憩60分控除）
 /employee/
   ├── stamp/    打刻操作（詳細）
   ├── daily/    日次勤怠一覧
@@ -463,6 +464,18 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 - **年5日取得義務** - アラートレベル: ok → yellow → orange → red
 - **半休対応** - 午前半休(0.5日)・午後半休(0.5日)
 
+### 9.1b みなし休憩控除
+
+**定数:** `packages/shared/src/constants.ts` → `DEEMED_BREAK_MIN = 60`
+
+休憩打刻を廃止し、退勤時にみなし60分を自動控除する方式。
+
+- 退勤API（`action: 'out'`）実行時に `breakTotalMin = 60` を自動セット
+- `workMin = (退勤時刻 - 出勤時刻) - 60分`
+- 休憩ボタン（break-start / break-end）は削除済み
+- `breaking` ステータスは廃止
+- Prismaスキーマの `breakStartTime`, `breakTotalMin` カラムは既存データ保護のため残存
+
 ### 9.2 残業管理・36協定チェック
 
 **ファイル:** `packages/shared/src/services/overtime.service.ts`
@@ -498,6 +511,36 @@ create, update, delete,
 password_change, export, settings_change
 ```
 
+### 9.4 メール通知
+
+**ファイル:** `packages/shared/src/services/email.service.ts`
+
+#### 通知トリガー
+
+| トリガー | 送信先 | タイミング | 設定キー |
+|---------|--------|----------|---------|
+| 休暇申請 | 承認者 | 申請時即時 | notifyApprovalRequest |
+| 承認/却下 | 申請者 | 処理時即時 | notifyApprovalResult |
+| 打刻漏れ | 本人 | バッチ（毎日22時） | notifyMissedStamp |
+| 残業警告 | 本人 | バッチ（毎月1日） | notifyOvertimeWarning |
+
+#### SMTP設定
+
+管理画面 → 設定 → 通知設定タブで構成。Setting テーブルに以下のキーで保存:
+- `smtpHost`, `smtpPort`, `smtpSecure`, `smtpUser`, `smtpPass`
+- `smtpFromAddress`, `smtpFromName`
+- `emailNotifications`（全体オン/オフ）
+- 各通知タイプ別オン/オフ
+
+#### メールテンプレート
+
+5種類のHTMLテンプレートを内蔵:
+1. 承認依頼メール（approvalRequestEmail）
+2. 承認結果メール（approvalResultEmail）
+3. 打刻漏れアラートメール（missedStampEmail）
+4. 残業警告メール（overtimeWarningEmail）
+5. テスト送信メール（testEmail）
+
 ---
 
 ## 10. バッチ処理・定期ジョブ
@@ -508,9 +551,9 @@ password_change, export, settings_change
 |------------|---------|---------|
 | 毎日 00:05 | 有給自動付与 | 基準日方式（7/1・1/1）で年次有給休暇を自動付与 + 入社時2日付与 |
 | 毎日 00:10 | 有給失効処理 | 2年経過した有給休暇を自動失効 |
-| 平日 22:00 | 打刻漏れチェック | 退勤打刻忘れ・打刻なしをアラート |
+| 平日 22:00 | 打刻漏れチェック | 退勤打刻忘れ・打刻なしをアラート + メール通知 |
 | 毎時 | 承認エスカレーション | 72時間以上放置された承認を上位者へ |
-| 毎月1日 01:00 | 残業月次集計 | 前月の残業時間を確定・記録 |
+| 毎月1日 01:00 | 残業月次集計 | 前月の残業時間を確定・記録 + メール通知 |
 
 ---
 
@@ -716,7 +759,7 @@ rm -rf node_modules && npm install
 - 接続文字列を `.env` で切り替え
 
 ### 機能拡張候補
-- [ ] メール通知（承認依頼・アラート）
+- [x] メール通知（承認依頼・アラート）
 - [ ] Slack/Teams 連携
 - [ ] 打刻 GPS 位置記録
 - [ ] シフト管理機能
@@ -743,6 +786,7 @@ rm -rf node_modules && npm install
 | 有給計算ロジック | `packages/shared/src/services/leave.service.ts` |
 | 残業チェックロジック | `packages/shared/src/services/overtime.service.ts` |
 | 監査ログ | `packages/shared/src/audit/logger.ts` |
+| メール通知 | `packages/shared/src/services/email.service.ts` |
 | バッチジョブ | `apps/kintai-admin/lib/cron/init.ts` |
 | デモデータ | `apps/kintai-app/scripts/seed.ts` |
 | 従業員画面 | `apps/kintai-app/app/` |
