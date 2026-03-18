@@ -1,6 +1,6 @@
 # 勤怠管理システム - システム設計書
 
-> **最終更新日:** 2026-03-18（メール通知・みなし休憩控除追加）
+> **最終更新日:** 2026-03-18（Turso Cloud移行・Renderデプロイ・CSV出力・UI改善）
 > **管理者:** 小田原 秀哉（システム管理者）
 > **プロジェクト名:** kintai-monorepo
 
@@ -38,7 +38,7 @@
 │  ┌──────────────────┐    ┌──────────────────────┐       │
 │  │  従業員ポータル     │    │  管理者ポータル        │       │
 │  │  (kintai-app)     │    │  (kintai-admin)      │       │
-│  │  :3000            │    │  :3001               │       │
+│  │  :3000 / Render   │    │  :3001 / Render      │       │
 │  └────────┬─────────┘    └──────────┬───────────┘       │
 │           │                         │                    │
 │           └────────┬────────────────┘                    │
@@ -48,11 +48,10 @@
 │          │  (共通ライブラリ)  │                             │
 │          └────────┬────────┘                             │
 │                   ▼                                      │
-│          ┌─────────────────┐                             │
-│          │  SQLite (Prisma) │                             │
-│          │  C:/temp/kintai/ │                             │
-│          │  dev.db          │                             │
-│          └─────────────────┘                             │
+│          ┌──────────────────────┐                        │
+│          │  Turso Cloud (libSQL) │  ← 本番              │
+│          │  SQLite (Prisma)      │  ← ローカル開発       │
+│          └──────────────────────┘                        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -64,10 +63,13 @@
 |------|------|-----------|------|
 | **フレームワーク** | Next.js | 16.1.6 | フルスタック React フレームワーク |
 | **UI** | React | 19.2.3 | コンポーネント UI |
-| **スタイル** | Tailwind CSS | v4 | ユーティリティファースト CSS |
+| **スタイル** | Tailwind CSS + 独自CSS | v4 | ユーティリティ CSS + カスタムクラス（.desktop-sidebar, .mobile-nav 等） |
 | **言語** | TypeScript | ^5 | 型安全な JavaScript |
 | **ORM** | Prisma | 5.22.0 | データベースアクセス |
-| **DB** | SQLite | - | 開発用データベース（本番は PostgreSQL に切替可能） |
+| **DB アダプタ** | @prisma/adapter-libsql | - | Turso Cloud 接続用 Prisma アダプタ |
+| **DB クライアント** | @libsql/client | - | libSQL (Turso) クライアントライブラリ |
+| **DB（本番）** | Turso Cloud (libSQL) | - | 本番データベース（エッジ対応） |
+| **DB（開発）** | SQLite | - | ローカル開発用データベース |
 | **認証** | jsonwebtoken | ^9.0.3 | JWT トークン認証 |
 | **暗号化** | bcryptjs | ^3.0.3 | パスワードハッシュ |
 | **バリデーション** | Zod | ^3.23.8 | ランタイムスキーマ検証 |
@@ -75,6 +77,7 @@
 | **Excel** | exceljs | ^4.4.0 | 帳票エクスポート |
 | **テスト** | Vitest + Playwright | - | 単体テスト + E2E テスト |
 | **パッケージ管理** | npm workspaces | - | モノレポ構成 |
+| **デプロイ** | Render | - | 本番ホスティング（render.yaml で構成） |
 
 ---
 
@@ -111,6 +114,7 @@
 │       │   │   ├── auth/           #   管理者認証
 │       │   │   ├── approvals/      #   承認処理
 │       │   │   ├── attendance/     #   全社員勤怠取得
+│       │   │   ├── csv/export/     #   CSV エクスポート（BOM付きUTF-8）
 │       │   │   ├── excel/export/   #   Excel エクスポート
 │       │   │   ├── users/          #   社員管理
 │       │   │   ├── admin/          #   管理者専用操作
@@ -150,6 +154,7 @@
 ├── docs/                           # ドキュメント
 ├── e2e/                            # E2E テスト（Playwright）
 ├── scripts/                        # ユーティリティスクリプト
+├── render.yaml                     # Render デプロイ構成（kintai-app / kintai-admin）
 ├── package.json                    # モノレポルート定義
 └── vitest.config.ts                # テスト設定
 ```
@@ -180,9 +185,12 @@
                             └───────┬───────┘
                                     ▼
                              [Prisma Client]
+                            + @prisma/adapter-libsql
                                     │
-                                    ▼
-                             [SQLite DB]
+                          ┌─────────┴──────────┐
+                          ▼                    ▼
+                   [Turso Cloud]        [SQLite ファイル]
+                   (本番環境)            (ローカル開発)
 ```
 
 ### 4.2 認証フロー
@@ -338,6 +346,7 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 | 管理画面アクセス | ○ | ○ | ○ | ○ | × | × | × | × | × |
 | 承認権限 | ○ | ○ | ○ | ○ | × | × | × | × | × |
 | Excel エクスポート | ○ | ○ | ○ | ○ | × | × | × | × | × |
+| CSV エクスポート | ○ | ○ | ○ | ○ | × | × | × | × | × |
 | 社員管理 | ○ | ○ | ○ | ○ | × | × | × | × | × |
 | システム設定 | ○ | ○ | × | × | × | × | × | × | × |
 
@@ -391,6 +400,7 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 | `/api/approvals` | GET | ○ | 全承認一覧 |
 | `/api/approvals` | POST | ○ | 承認・却下処理 |
 | `/api/attendance` | GET | ○ | 全社員の月次勤怠集計 |
+| `/api/csv/export` | GET | ○ | 勤怠データ CSV エクスポート（BOM付きUTF-8、日別・社員別） |
 | `/api/excel/export` | POST | ○ | 勤怠データ Excel エクスポート |
 | `/api/users` | GET | ○ | 社員管理一覧 |
 | `/api/users` | PATCH | ○ | 社員情報更新 |
@@ -407,7 +417,7 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 ### 8.1 従業員ポータル画面（:3000）
 
 ```
-/login          ログイン画面
+/login          ログイン画面（メールアドレス記憶機能: localStorage）
 /register       セルフ登録画面
 /               ホーム（ダッシュボード）
 /stamp          打刻画面（時計 + 出勤/在宅/退勤ボタン、みなし休憩60分控除）
@@ -417,14 +427,14 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
   ├── monthly/  月次サマリ・統計
   └── requests/ 休暇申請作成・一覧
 
-[ナビゲーション（ボトムタブ）]
-  打刻 | 日次一覧 | 月次サマリ | 申請 | その他
+[サイドバーナビゲーション]
+  リンク先: /employee/stamp, /employee/daily, /employee/monthly, /employee/requests
 ```
 
 ### 8.2 管理者ポータル画面（:3001）
 
 ```
-/login          管理者ログイン画面
+/login          管理者ログイン画面（メールアドレス記憶機能: localStorage）
 /               ダッシュボード（KPI表示）
 /attendance     月次勤怠一覧（全社員）
 /approvals      承認管理
@@ -432,7 +442,17 @@ CREATE INDEX idx_audit_created     ON AuditLog(createdAt);
 /master         マスタ管理（祝日・設定）
 /overtime       残業モニタリング・36協定アラート
 /settings       システム設定
+
+[サイドバー: 独自CSSクラス]
+  .desktop-sidebar  デスクトップ用固定サイドバー
+  .mobile-nav       モバイル用ボトムナビゲーション
 ```
+
+### 8.3 レイアウト・レスポンシブ対応
+
+- CSS変数 `--sidebar-w` でサイドバー幅を一元管理
+- `globals.css` で `main` 要素に `margin-left: var(--sidebar-w)` を設定
+- 管理者ポータルのサイドバーは Tailwind クラスから独自CSSクラス（`.desktop-sidebar`, `.mobile-nav`）に移行
 
 ---
 
@@ -564,21 +584,30 @@ password_change, export, settings_change
 各アプリおよび shared パッケージに `.env` ファイルが必要です。
 
 ```env
-# データベース接続先
+# ローカル開発用（SQLiteファイル）
 DATABASE_URL="file:C:/temp/kintai/dev.db"
+
+# 本番用（Turso Cloud） - 設定時は Turso が優先される
+TURSO_DATABASE_URL="libsql://your-db-name.turso.io"
+TURSO_AUTH_TOKEN="your-turso-auth-token"
 
 # JWT 秘密鍵（本番環境では必ず変更すること）
 JWT_SECRET="kintai-app-secret-key-change-in-production-2024"
 ```
+
+**データベース切替ロジック:**
+- `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` が設定されている場合 → Turso Cloud（libSQL）に接続
+- 上記が未設定の場合 → `DATABASE_URL` のSQLiteファイルに接続
+- Prisma は `@prisma/adapter-libsql` + `@libsql/client` 経由で Turso に接続
 
 **設置場所:**
 - `apps/kintai-app/.env`
 - `apps/kintai-admin/.env`
 - `packages/shared/.env`
 
-> **⚠️ 本番環境移行時の注意:**
+> **⚠️ 本番環境（Render）での注意:**
 > - `JWT_SECRET` は必ずランダムな文字列に変更
-> - `DATABASE_URL` は PostgreSQL 等の本番 DB に変更
+> - `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` を Render の環境変数に設定
 > - `.env` ファイルはリポジトリにコミットしない
 
 ### 11.2 Prisma 設定
@@ -592,11 +621,14 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 ```
 
-**DB ファイル格納場所:** `C:/temp/kintai/dev.db`
+**Turso Cloud 接続:** `@libsql/client` で Turso に接続し、`@prisma/adapter-libsql` を経由して Prisma Client に渡す。`previewFeatures = ["driverAdapters"]` が必要。
+
+**ローカル開発 DB ファイル格納場所:** `C:/temp/kintai/dev.db`
 
 ### 11.3 システム設定（Setting テーブル）
 
@@ -612,12 +644,17 @@ generator client {
 | `monthlyLimit` | 60 | 月間残業上限（時間） |
 | `yearlyLimit` | 720 | 年間残業上限（時間） |
 
-### 11.4 ポート設定
+### 11.4 ポート設定・デプロイ
 
-| アプリ | ポート | 用途 |
-|-------|-------|------|
-| kintai-app | 3000 | 従業員ポータル |
-| kintai-admin | 3001 | 管理者ポータル |
+| アプリ | ローカルポート | 本番URL (Render) | 用途 |
+|-------|:---:|------|------|
+| kintai-app | 3000 | https://kintai-app-3na7.onrender.com | 従業員ポータル |
+| kintai-admin | 3001 | https://kintai-admin.onrender.com | 管理者ポータル |
+
+**Render デプロイ構成:**
+- `render.yaml` で kintai-app / kintai-admin の2サービスを定義
+- 各サービスは Web Service として Render にデプロイ
+- 環境変数（`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`）は Render ダッシュボードで設定
 
 ### 11.5 モノレポ構成（package.json）
 
@@ -755,21 +792,24 @@ rm -rf node_modules && npm install
 ## 15. 今後の拡張ポイント
 
 ### データベース移行
-- SQLite → PostgreSQL への移行は `schema.prisma` の `provider` を変更するだけ
-- 接続文字列を `.env` で切り替え
+- [x] SQLite → Turso Cloud (libSQL) に移行済み（`@libsql/client` + `@prisma/adapter-libsql`）
+- 環境変数 `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` で本番/開発を切替
+- ローカル開発は引き続き SQLite ファイルを使用可能
 
 ### 機能拡張候補
 - [x] メール通知（承認依頼・アラート）
+- [x] CSV エクスポート（日別・社員別の勤怠記録）
+- [x] ログイン記憶機能（localStorage でメールアドレス保持）
 - [ ] Slack/Teams 連携
 - [ ] 打刻 GPS 位置記録
 - [ ] シフト管理機能
-- [ ] 給与計算連携（CSV出力）
+- [ ] 給与計算連携
 - [ ] PWA オフライン対応
 - [ ] Docker コンテナ化・CI/CD パイプライン
 
 ### インフラ
+- [x] Render デプロイ（render.yaml で2サービス構成）
 - [ ] Docker Compose による開発環境標準化
-- [ ] Vercel / AWS デプロイ設定
 - [ ] GitHub Actions CI/CD
 
 ---
@@ -787,10 +827,13 @@ rm -rf node_modules && npm install
 | 残業チェックロジック | `packages/shared/src/services/overtime.service.ts` |
 | 監査ログ | `packages/shared/src/audit/logger.ts` |
 | メール通知 | `packages/shared/src/services/email.service.ts` |
+| CSV エクスポート | `apps/kintai-admin/app/api/csv/export/route.ts` |
 | バッチジョブ | `apps/kintai-admin/lib/cron/init.ts` |
+| デプロイ設定 | `render.yaml` |
 | デモデータ | `apps/kintai-app/scripts/seed.ts` |
 | 従業員画面 | `apps/kintai-app/app/` |
 | 管理者画面 | `apps/kintai-admin/app/` |
+| レイアウト・CSS変数 | 各アプリの `app/globals.css` |
 | 環境変数 | 各 `.env` ファイル |
 
 ---
