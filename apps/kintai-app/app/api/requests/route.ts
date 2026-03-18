@@ -30,17 +30,29 @@ export async function POST(req: NextRequest) {
     const approverRoles = getApproverRoles(me.role)
     let approverId: string | null = null
 
-    if (approverRoles.length > 0) {
-      // 同じ部門の部長を検索（直属上司）
-      const approver = await prisma.user.findFirst({
-        where: {
-          role: { in: approverRoles },
-          status: 'active',
-          department: me.department,
-        },
+    // 取締役・統括部長は承認不要（即承認）
+    if (approverRoles.length === 0) {
+      await prisma.leaveRequest.update({
+        where: { id: request.id },
+        data: { status: 'approved', processedAt: new Date() },
       })
-      approverId = approver?.id || null
+      return NextResponse.json({ success: true, request, autoApproved: true })
     }
+
+    // 承認者ロール検索: まず同部署、なければ全社から
+    const approver = await prisma.user.findFirst({
+      where: {
+        role: { in: approverRoles },
+        status: 'active',
+        department: me.department,
+      },
+    }) || await prisma.user.findFirst({
+      where: {
+        role: { in: approverRoles },
+        status: 'active',
+      },
+    })
+    approverId = approver?.id || null
 
     // Create approval record
     if (approverId) {

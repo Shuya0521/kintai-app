@@ -17,16 +17,16 @@ export function isExportRole(role: string): boolean {
 
 /**
  * 申請者のロールに応じた承認者ロールを返す
- * - 一般社員/主査/主事/リーダー/課長/所長/所長代理 → 同部署の部長
- * - 部長 → 統括部長
- * - 統括部長 → 空配列（自動承認 or 管理者承認）
+ * - 一般社員/主査/主事/リーダー/課長/所長/所長代理/システム管理者 → 同部署の部長
+ * - 部長 → 取締役（統括部長不在のため）
+ * - 取締役/統括部長 → 空配列（申請即承認）
  */
 export function getApproverRoles(role: string): string[] {
-  if (role === '部長') {
-    return ['統括部長']
-  }
-  if (role === '統括部長') {
+  if (role === '取締役' || role === '統括部長') {
     return []
+  }
+  if (role === '部長') {
+    return ['取締役']
   }
   return ['部長']
 }
