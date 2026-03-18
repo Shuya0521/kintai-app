@@ -34,7 +34,6 @@ export async function GET() {
   return jsonOk({
     today: {
       working: todayRecords.filter(r => r.status === 'working').length,
-      breaking: todayRecords.filter(r => r.status === 'breaking').length,
       done: todayRecords.filter(r => r.status === 'done').length,
       office: todayRecords.filter(r => r.workPlace === 'office').length,
       remote: todayRecords.filter(r => r.workPlace === 'remote').length,

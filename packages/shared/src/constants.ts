@@ -35,8 +35,11 @@ export type WorkType = (typeof WORK_TYPES)[number]
 export const WORK_PLACES = ['office', 'remote'] as const
 export type WorkPlace = (typeof WORK_PLACES)[number]
 
+// ── みなし休憩控除（分） ────────────────────────────
+export const DEEMED_BREAK_MIN = 60
+
 // ── 勤怠ステータス ────────────────────────────────
-export const ATTENDANCE_STATUSES = ['working', 'breaking', 'done', 'holiday'] as const
+export const ATTENDANCE_STATUSES = ['working', 'done', 'holiday'] as const
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
 
 // ── 休暇タイプ ────────────────────────────────────

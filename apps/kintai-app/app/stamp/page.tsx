@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { apiGet, apiPost } from '@/lib/api'
 
-type StampStatus = 'none' | 'working' | 'breaking' | 'done'
+type StampStatus = 'none' | 'working' | 'done'
 type WorkType    = 'office' | 'remote'
 
 interface StampState {
   inTime:     number | null
   outTime:    number | null
-  breakStart: number | null
   breakTotal: number
   status:     StampStatus
   workType:   WorkType
@@ -25,7 +24,7 @@ export default function StampPage() {
   const [toast, setToast] = useState<{ msg: string; icon: string } | null>(null)
   const [socialProof, setSocialProof] = useState<{ checkedIn: number; total: number } | null>(null)
   const [stamp, setStamp] = useState<StampState>({
-    inTime: null, outTime: null, breakStart: null,
+    inTime: null, outTime: null,
     breakTotal: 0, status: 'none', workType: 'office',
   })
 
@@ -89,7 +88,7 @@ export default function StampPage() {
   }
 
   // ── 打刻処理 ──────────────────────────────────────
-  const doStamp = async (type: 'in' | 'remote' | 'out' | 'break' | 'breakEnd') => {
+  const doStamp = async (type: 'in' | 'remote' | 'out') => {
     const time = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
     try {
       let action: string
@@ -108,14 +107,6 @@ export default function StampPage() {
         case 'out':
           action = 'out'
           showToast(`退勤打刻しました　${time}`, '🔴')
-          break
-        case 'break':
-          action = 'break-start'
-          showToast('休憩開始', '☕')
-          break
-        case 'breakEnd':
-          action = 'break-end'
-          showToast('休憩終了', '▶')
           break
         default:
           return
@@ -138,10 +129,11 @@ export default function StampPage() {
   }
 
   // ── 実働時間計算 ──────────────────────────────────
+  const deemedBreak = 60 // みなし休憩控除（分）
   const workMin = stamp.inTime
     ? stamp.outTime
-      ? Math.round((stamp.outTime - stamp.inTime) / 60000) - stamp.breakTotal
-      : Math.round((Date.now() - stamp.inTime) / 60000) - stamp.breakTotal
+      ? Math.round((stamp.outTime - stamp.inTime) / 60000) - deemedBreak
+      : Math.round((Date.now() - stamp.inTime) / 60000) - deemedBreak
     : 0
   const wh = Math.floor(Math.max(0, workMin) / 60)
   const wm = Math.max(0, workMin) % 60
@@ -163,14 +155,11 @@ export default function StampPage() {
   const statusConf = {
     none:     nudge || { label: '未出勤',   color: 'var(--t3)',     bg: 'rgba(148,163,184,.07)' },
     working:  { label: stamp.workType === 'remote' ? '在宅勤務中' : '勤務中', color: stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)', bg: stamp.workType === 'remote' ? 'rgba(167,139,250,.1)' : 'rgba(52,211,153,.1)' },
-    breaking: { label: '休憩中',   color: 'var(--amber)',  bg: 'rgba(251,191,36,.1)' },
     done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'rgba(148,163,184,.07)' },
   }[stamp.status]
 
   const canIn     = stamp.status === 'none'
   const canOut    = stamp.status === 'working'
-  const canBreak  = stamp.status === 'working'
-  const canBreakE = stamp.status === 'breaking'
 
   const fmt = (ts: number | null) =>
     ts ? new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'
@@ -198,7 +187,7 @@ export default function StampPage() {
               <div style={S.clock}>{clock}</div>
               <div style={S.clockDate}>{date}</div>
               <div style={{ ...S.statusPill, color: statusConf.color, background: statusConf.bg }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusConf.color, display: 'inline-block', marginRight: 6, animation: stamp.status === 'working' || stamp.status === 'breaking' ? 'blink 1.5s infinite' : 'none' }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusConf.color, display: 'inline-block', marginRight: 6, animation: stamp.status === 'working' ? 'blink 1.5s infinite' : 'none' }} />
                 {statusConf.label}
               </div>
             </div>
@@ -210,18 +199,12 @@ export default function StampPage() {
               <StampBtn icon="🔴" label="退勤"     color="var(--red)"    disabled={!canOut}   onClick={() => doStamp('out')} />
             </div>
 
-            {/* 休憩 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <StampBtn icon="☕" label="休憩開始" color="var(--amber)" disabled={!canBreak}  onClick={() => doStamp('break')} />
-              <StampBtn icon="▶" label="休憩終了" color="var(--amber)" disabled={!canBreakE} onClick={() => doStamp('breakEnd')} />
-            </div>
-
             {/* 今日のログ */}
             <div style={S.todayLog}>
               <LogRow label="勤務場所" value={stamp.inTime ? (stamp.workType === 'remote' ? '🏠 在宅勤務' : '🏢 出社') : '—'} color={stamp.inTime ? (stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)') : 'var(--t3)'} />
               <LogRow label="出勤時刻" value={fmt(stamp.inTime)}  color="var(--green)" />
               <LogRow label="退勤時刻" value={fmt(stamp.outTime)} color="var(--red)"   />
-              <LogRow label="休憩時間" value={stamp.breakTotal ? `${stamp.breakTotal}分` : '—'} />
+              <LogRow label="休憩時間" value={stamp.inTime ? `${deemedBreak}分（みなし）` : '—'} />
               <LogRow label="実働時間" value={stamp.inTime ? `${wh}h ${wm}m` : '—'} color="var(--acc)" last />
             </div>
           </div>

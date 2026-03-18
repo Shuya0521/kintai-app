@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, jsonOk, jsonError } from '@/lib/auth'
-import { STANDARD_WORK_MIN, getTodayStr } from '@kintai/shared'
+import { STANDARD_WORK_MIN, DEEMED_BREAK_MIN, getTodayStr } from '@kintai/shared'
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser()
@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
       if (record.checkOutTime) return jsonError('既に退勤済みです', 400)
 
       const inTime = record.checkInTime!.getTime()
-      const workMin = Math.floor((now.getTime() - inTime) / 60000) - record.breakTotalMin
+      const breakMin = DEEMED_BREAK_MIN // みなし休憩60分固定
+      const workMin = Math.floor((now.getTime() - inTime) / 60000) - breakMin
       const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
       const year = now.getFullYear()
       const month = now.getMonth() + 1
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       record = await prisma.$transaction(async (tx) => {
         const updated = await tx.attendance.update({
           where: { id: record!.id },
-          data: { checkOutTime: now, workMin, overtimeMin, status: 'done' },
+          data: { checkOutTime: now, breakTotalMin: breakMin, workMin, overtimeMin, status: 'done' },
         })
 
         if (overtimeMin > 0) {
@@ -61,23 +62,6 @@ export async function POST(req: NextRequest) {
         return updated
       })
 
-    } else if (action === 'break-start') {
-      if (!record || record.status !== 'working') return jsonError('勤務中ではありません', 400)
-      record = await prisma.attendance.update({
-        where: { id: record.id },
-        data: { breakStartTime: now, status: 'breaking' },
-      })
-    } else if (action === 'break-end') {
-      if (!record || record.status !== 'breaking') return jsonError('休憩中ではありません', 400)
-      const breakMin = Math.floor((now.getTime() - record.breakStartTime!.getTime()) / 60000)
-      record = await prisma.attendance.update({
-        where: { id: record.id },
-        data: {
-          breakStartTime: null,
-          breakTotalMin: record.breakTotalMin + breakMin,
-          status: 'working',
-        },
-      })
     } else {
       return jsonError('無効なアクションです', 400)
     }
@@ -103,7 +87,7 @@ export async function GET(req: NextRequest) {
         where: { userId_date: { userId: me.id, date: today } },
       }),
       prisma.attendance.count({
-        where: { date: today, status: { in: ['working', 'breaking', 'done'] } },
+        where: { date: today, status: { in: ['working', 'done'] } },
       }),
       prisma.user.count({ where: { status: 'active' } }),
     ])

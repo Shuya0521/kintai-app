@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { cleanDatabase, createTestUser, setAuthCookie, clearAuthCookie, createJsonRequest } from '../helpers'
-import { prisma, getTodayStr } from '@kintai/shared'
+import { prisma, getTodayStr, DEEMED_BREAK_MIN } from '@kintai/shared'
 
 // Import route handlers after mocks are set up (setup.ts runs first)
 import { POST, GET } from '../../app/api/attendance/route'
@@ -52,7 +52,7 @@ describe('Attendance API', () => {
     expect(res2.status).toBe(400)
   })
 
-  it('AT-03: check-out (action=out) calculates workMin and sets status=done', async () => {
+  it('AT-03: check-out (action=out) applies deemed break deduction and sets status=done', async () => {
     const user = await createTestUser()
     const today = getTodayStr()
 
@@ -77,6 +77,9 @@ describe('Attendance API', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.attendance.status).toBe('done')
+    // みなし休憩控除: breakTotalMin は DEEMED_BREAK_MIN（60分）固定
+    expect(data.attendance.breakTotalMin).toBe(DEEMED_BREAK_MIN)
+    // 実働: 約120分 - 60分みなし = 約60分
     expect(data.attendance.workMin).toBeGreaterThan(0)
     expect(data.attendance.checkOutTime).not.toBeNull()
   })
@@ -92,11 +95,10 @@ describe('Attendance API', () => {
     expect(res.status).toBe(400)
   })
 
-  it('AT-05: break start/end increments breakTotalMin', async () => {
+  it('AT-05: break-start/break-end actions are no longer supported', async () => {
     const user = await createTestUser()
     const today = getTodayStr()
 
-    // Create a working attendance record
     await prisma.attendance.create({
       data: {
         userId: user.id,
@@ -107,43 +109,28 @@ describe('Attendance API', () => {
       },
     })
 
-    // Break start
     setAuthCookie(user.id, user.role)
-    const req1 = createJsonRequest('http://localhost:3000/api/attendance', {
+    const req = createJsonRequest('http://localhost:3000/api/attendance', {
       action: 'break-start',
     })
-    const res1 = await POST(req1 as any)
-    expect(res1.status).toBe(200)
-    const data1 = await res1.json()
-    expect(data1.attendance.status).toBe('breaking')
-
-    // Break end
-    setAuthCookie(user.id, user.role)
-    const req2 = createJsonRequest('http://localhost:3000/api/attendance', {
-      action: 'break-end',
-    })
-    const res2 = await POST(req2 as any)
-    expect(res2.status).toBe(200)
-    const data2 = await res2.json()
-    expect(data2.attendance.status).toBe('working')
-    // breakTotalMin should be >= 0 (may be 0 if break was very short)
-    expect(data2.attendance.breakTotalMin).toBeGreaterThanOrEqual(0)
+    const res = await POST(req as any)
+    expect(res.status).toBe(400)
   })
 
-  it('AT-06: overtime calculation (>8h) sets overtimeMin correctly', async () => {
+  it('AT-06: overtime calculation (>8h + deemed break) sets overtimeMin correctly', async () => {
     const user = await createTestUser()
     const today = getTodayStr()
 
-    // Create attendance record with check-in 9.5 hours ago (should yield overtime)
-    const nineAndHalfHoursAgo = new Date(Date.now() - 9.5 * 60 * 60 * 1000)
+    // Create attendance record with check-in 10 hours ago
+    // After deemed break (60min), workMin ≈ 540min > 480min → overtime
+    const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000)
     await prisma.attendance.create({
       data: {
         userId: user.id,
         date: today,
-        checkInTime: nineAndHalfHoursAgo,
+        checkInTime: tenHoursAgo,
         workPlace: 'office',
         status: 'working',
-        breakTotalMin: 0,
       },
     })
 
@@ -155,7 +142,8 @@ describe('Attendance API', () => {
 
     expect(res.status).toBe(200)
     const data = await res.json()
-    // workMin should be approximately 570 (9.5h = 570min)
+    // みなし控除: workMin ≈ 600 - 60 = 540分 > 480分
+    expect(data.attendance.breakTotalMin).toBe(DEEMED_BREAK_MIN)
     expect(data.attendance.workMin).toBeGreaterThan(480)
     // overtimeMin = workMin - 480 (standard 8h)
     expect(data.attendance.overtimeMin).toBe(data.attendance.workMin - 480)

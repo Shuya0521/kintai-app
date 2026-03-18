@@ -9,7 +9,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 interface DashboardData {
   today: {
     working: number
-    breaking: number
     done: number
     office: number
     remote: number
@@ -118,13 +117,10 @@ export default function AdminDashboard() {
                       fontSize: 11,
                       padding: '2px 6px',
                       borderRadius: 4,
-                      background: m.status === 'working' ? 'rgba(52,211,153,0.15)' :
-                        m.status === 'breaking' ? 'rgba(251,191,36,0.15)' : 'rgba(63,84,104,0.15)',
-                      color: m.status === 'working' ? 'var(--green)' :
-                        m.status === 'breaking' ? 'var(--amber)' : 'var(--t2)',
+                      background: m.status === 'working' ? 'rgba(52,211,153,0.15)' : 'rgba(63,84,104,0.15)',
+                      color: m.status === 'working' ? 'var(--green)' : 'var(--t2)',
                     }}>
-                      {m.status === 'working' ? (m.workPlace === 'remote' ? '在宅中' : '勤務中') :
-                        m.status === 'breaking' ? '休憩中' : '退勤済'}
+                      {m.status === 'working' ? (m.workPlace === 'remote' ? '在宅中' : '勤務中') : '退勤済'}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--t2)', fontFamily: 'monospace' }}>
                       {formatMinToHHMM(m.workMin)}

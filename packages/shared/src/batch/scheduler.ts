@@ -14,6 +14,7 @@
 import cron from 'node-cron'
 import { prisma } from '../db'
 import { grantAnnualPaidLeave, expirePaidLeaves } from '../services/leave.service'
+import { sendMail, missedStampEmail, overtimeWarningEmail } from '../services/email.service'
 import { getTodayStr } from '../formatters'
 import { ROLE_HIERARCHY } from '../constants'
 
@@ -168,11 +169,7 @@ async function checkMissedStamps(date: string): Promise<string[]> {
       alerts.push(`${user.employeeNumber}: 退勤未打刻`)
     }
 
-    // 休憩開始したが終了していない
-    if (att.status === 'breaking') {
-      await createMissedAlert(user.id, date, 'no_break_end')
-      alerts.push(`${user.employeeNumber}: 休憩未終了`)
-    }
+    // 休憩みなし控除方式のため、no_break_end チェックは不要
   }
 
   return alerts
@@ -187,6 +184,17 @@ async function createMissedAlert(userId: string, date: string, alertType: string
     await prisma.missedStampAlert.create({
       data: { userId, date, alertType },
     })
+
+    // メール通知
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (user) {
+      const { subject, html } = missedStampEmail({
+        employeeName: `${user.lastName} ${user.firstName}`,
+        date,
+        alertType,
+      })
+      sendMail(user.email, subject, html, 'missedStamp').catch(() => {})
+    }
   }
 }
 
@@ -281,5 +289,28 @@ async function finalizeMonthlyOvertime(year: number, month: number): Promise<voi
         limitExceeded: totalMin >= 80 * 60,
       },
     })
+
+    // 残業警告メール送信
+    const totalHours = Math.round(totalMin / 60)
+    let level = ''
+    if (totalMin >= 100 * 60) level = 'violation'
+    else if (totalMin >= 80 * 60) level = 'critical'
+    else if (totalMin >= 60 * 60) level = 'serious'
+    else if (totalMin >= 45 * 60) level = 'warning'
+    else if (totalMin >= 36 * 60) level = 'caution'
+
+    if (level) {
+      const emp = await prisma.user.findUnique({ where: { id: user.id } })
+      if (emp) {
+        const monthStr = `${year}年${month}月`
+        const { subject, html } = overtimeWarningEmail({
+          employeeName: `${emp.lastName} ${emp.firstName}`,
+          month: monthStr,
+          totalHours,
+          level,
+        })
+        sendMail(emp.email, subject, html, 'overtimeWarning').catch(() => {})
+      }
+    }
   }
 }
