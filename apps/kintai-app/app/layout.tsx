@@ -1,11 +1,18 @@
 import type { Metadata } from 'next'
-import { Noto_Sans_JP } from 'next/font/google'
+import { Zen_Maru_Gothic, Inter } from 'next/font/google'
 import './globals.css'
 
-const notoSansJP = Noto_Sans_JP({
+const zenMaruGothic = Zen_Maru_Gothic({
   subsets: ['latin'],
   weight: ['300', '400', '500', '700'],
   display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-inter',
 })
 
 export const metadata: Metadata = {
@@ -26,7 +33,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={notoSansJP.className}>
+      <body className={`${zenMaruGothic.className} ${inter.variable}`}>
         {children}
       </body>
     </html>

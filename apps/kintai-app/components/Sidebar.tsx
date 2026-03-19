@@ -16,6 +16,21 @@ export default function Sidebar({ active }: { active: string }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showLogout, setShowLogout] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('kintai-theme') as 'dark' | 'light' | null
+    const initial = saved || 'dark'
+    setTheme(initial)
+    document.documentElement.setAttribute('data-theme', initial)
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('kintai-theme', next)
+  }
 
   useEffect(() => {
     const u = sessionStorage.getItem('user')
@@ -72,6 +87,13 @@ export default function Sidebar({ active }: { active: string }) {
           ))}
           <div
             style={{ ...M.tab, color: 'var(--t3)' }}
+            onClick={toggleTheme}
+          >
+            <span style={M.tabIcon}>{theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span style={M.tabLabel}>{theme === 'dark' ? '明るく' : '暗く'}</span>
+          </div>
+          <div
+            style={{ ...M.tab, color: 'var(--t3)' }}
             onClick={() => setShowLogout(true)}
           >
             <span style={M.tabIcon}>⏻</span>
@@ -104,6 +126,14 @@ export default function Sidebar({ active }: { active: string }) {
             </div>
           ))}
         </nav>
+
+        <div
+          style={{ ...S.logoutItem, color: 'var(--t2)', borderTop: '1px solid var(--b)', padding: '10px 18px', cursor: 'pointer' }}
+          onClick={toggleTheme}
+        >
+          <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
+          {theme === 'dark' ? 'ライトモード' : 'ダークモード'}
+        </div>
 
         <div style={S.userBtn} onClick={() => setMenuOpen(o => !o)}>
           <div style={S.avatar}>{user?.av ?? '?'}</div>
@@ -140,7 +170,7 @@ const M: Record<string, React.CSSProperties> = {
     WebkitTapHighlightColor: 'transparent',
   },
   tabIcon: { fontSize: 20, lineHeight: 1 },
-  tabLabel: { fontSize: 9, fontWeight: 500 },
+  tabLabel: { fontSize: 10, fontWeight: 500 },
 }
 
 // ── デスクトップスタイル ──────────────────────────────
@@ -153,7 +183,7 @@ const S: Record<string, React.CSSProperties> = {
   },
   logo: {
     padding: '22px 20px 16px', borderBottom: '1px solid var(--b)',
-    fontFamily: 'DM Mono, monospace', fontSize: 11,
+    fontFamily: 'var(--font-inter), Inter, sans-serif', fontSize: 11,
     color: 'var(--acc)', letterSpacing: '0.12em',
   },
   logoSub: { display: 'block', fontSize: 9, color: 'var(--t3)', marginTop: 3, letterSpacing: '0.06em' },
@@ -163,7 +193,7 @@ const S: Record<string, React.CSSProperties> = {
     padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
     marginBottom: 2, fontSize: 13, color: 'var(--t2)', transition: 'all .15s',
   },
-  itemActive: { background: 'rgba(56,189,248,.1)', color: 'var(--acc)' },
+  itemActive: { background: 'color-mix(in srgb, var(--acc) 10%, transparent)', color: 'var(--acc)' },
   icon: { fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0 },
   userBtn: {
     padding: '14px 16px', borderTop: '1px solid var(--b)',
@@ -173,10 +203,10 @@ const S: Record<string, React.CSSProperties> = {
     width: 32, height: 32, borderRadius: '50%',
     background: 'linear-gradient(135deg, var(--acc), var(--purple))',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 12, fontWeight: 700, color: '#0a0f1e', flexShrink: 0,
+    fontSize: 12, fontWeight: 700, color: '#ffffff', flexShrink: 0,
   },
   userName: { fontSize: 12, fontWeight: 500 },
-  userRole: { fontSize: 10, color: 'var(--t3)', fontFamily: 'DM Mono, monospace' },
+  userRole: { fontSize: 10, color: 'var(--t3)', fontFamily: 'var(--font-inter), Inter, sans-serif' },
   logoutMenu: {
     borderTop: '1px solid var(--b)', overflow: 'hidden',
     transition: 'max-height .25s ease',

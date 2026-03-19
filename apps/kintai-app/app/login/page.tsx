@@ -23,6 +23,9 @@ export default function LoginPage() {
   const [quickUsers, setQuickUsers] = useState<QuickUser[]>([])
 
   useEffect(() => {
+    const theme = localStorage.getItem('kintai-theme')
+    if (theme) document.documentElement.setAttribute('data-theme', theme)
+
     const saved = localStorage.getItem('kintai_app_email')
     if (saved) {
       setEmail(saved)
@@ -162,27 +165,28 @@ const S: Record<string, React.CSSProperties> = {
   wrap: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     minHeight: '100vh', background: 'var(--bg)',
-    fontFamily: "'Noto Sans JP', sans-serif", color: 'var(--text)',
+    color: 'var(--text)',
     padding: '24px 16px',
   },
   box: {
     width: '100%', maxWidth: 380, background: 'var(--s1)', border: '1px solid var(--b)',
     borderRadius: 20, padding: '40px 24px 32px',
+    boxShadow: '0 4px 20px rgba(99,102,241,.08)',
   },
   logo: {
-    fontFamily: 'DM Mono, monospace', fontSize: 13,
+    fontFamily: 'var(--font-inter), Inter, sans-serif', fontSize: 13,
     color: 'var(--acc)', letterSpacing: '0.14em', marginBottom: 6,
   },
   title: { fontSize: 22, fontWeight: 700, marginBottom: 6 },
-  sub:   { fontSize: 12, color: 'var(--t2)', marginBottom: 28 },
+  sub:   { fontSize: 13, color: 'var(--t2)', marginBottom: 28 },
   error: {
-    background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.2)',
+    background: 'color-mix(in srgb, var(--red) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--red) 20%, transparent)',
     borderRadius: 8, padding: '10px 14px', fontSize: 12,
     color: 'var(--red)', marginBottom: 14,
   },
   label: {
-    fontSize: 11, color: 'var(--t2)', marginBottom: 6, display: 'block',
-    fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em',
+    fontSize: 12, color: 'var(--t2)', marginBottom: 6, display: 'block',
+    fontFamily: 'var(--font-inter), Inter, sans-serif', letterSpacing: '0.04em',
   },
   input: {
     width: '100%', background: 'var(--s2)', border: '1px solid var(--b2)',
@@ -193,9 +197,11 @@ const S: Record<string, React.CSSProperties> = {
   },
   loginBtn: {
     width: '100%', padding: 15, borderRadius: 12, border: 0,
-    background: 'var(--acc)', color: '#0a0f1e', fontSize: 15,
+    background: 'linear-gradient(180deg, var(--acc), color-mix(in srgb, var(--acc) 85%, black))',
+    color: '#ffffff', fontSize: 15,
     fontWeight: 700, cursor: 'pointer', marginTop: 4,
     transition: 'opacity .2s',
+    boxShadow: '0 4px 14px color-mix(in srgb, var(--acc) 30%, transparent)',
   },
   registerLink: {
     textAlign: 'center', fontSize: 13, color: 'var(--t3)', marginTop: 20,
@@ -208,8 +214,8 @@ const S: Record<string, React.CSSProperties> = {
     borderTop: '1px solid var(--b)',
   },
   quickTitle: {
-    fontSize: 12, color: '#94a3b8', marginBottom: 12,
-    fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em', textAlign: 'center',
+    fontSize: 12, color: 'var(--t3)', marginBottom: 12,
+    fontFamily: 'var(--font-inter), Inter, sans-serif', letterSpacing: '0.04em', textAlign: 'center',
   },
   quickCards: {
     display: 'flex', flexDirection: 'column', gap: 8,
@@ -217,29 +223,29 @@ const S: Record<string, React.CSSProperties> = {
   quickCard: {
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '14px 16px', borderRadius: 12,
-    backgroundColor: '#0f1623', border: '1px solid #1e2d45',
+    backgroundColor: 'var(--s2)', border: '1px solid var(--b)',
     cursor: 'pointer', transition: 'all 0.15s ease',
     WebkitTapHighlightColor: 'transparent',
   },
   quickAvatar: {
     width: 40, height: 40, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#080c14', fontWeight: 700, fontSize: 15, flexShrink: 0,
+    color: '#ffffff', fontWeight: 700, fontSize: 15, flexShrink: 0,
   },
   quickInfo: {
     display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0,
   },
   quickName: {
-    fontSize: 14, fontWeight: 600, color: '#e2e8f0',
+    fontSize: 14, fontWeight: 600, color: 'var(--text)',
   },
   quickEmail: {
-    fontSize: 11, color: '#38bdf8', fontFamily: 'DM Mono, monospace',
+    fontSize: 11, color: 'var(--acc)', fontFamily: 'var(--font-inter), Inter, sans-serif',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   quickDept: {
-    fontSize: 11, color: '#94a3b8',
+    fontSize: 11, color: 'var(--t2)',
   },
   quickHint: {
-    fontSize: 10, color: '#3f5468', textAlign: 'center', marginTop: 10,
+    fontSize: 10, color: 'var(--t3)', textAlign: 'center', marginTop: 10,
   },
 }

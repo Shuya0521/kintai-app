@@ -154,17 +154,17 @@ export default function StampPage() {
     const h = now.getHours()
     const m = now.getMinutes()
     const timeVal = h * 60 + m
-    if (timeVal >= 9 * 60 + 15) return { label: '⚠ 遅刻リスク', color: 'var(--red)', bg: 'rgba(248,113,113,.12)' }
-    if (timeVal >= 9 * 60) return { label: '出勤してください', color: 'var(--amber)', bg: 'rgba(251,191,36,.12)' }
+    if (timeVal >= 9 * 60 + 15) return { label: '⚠ 遅刻リスク', color: 'var(--red)', bg: 'color-mix(in srgb, var(--red) 12%, transparent)' }
+    if (timeVal >= 9 * 60) return { label: '出勤してください', color: 'var(--amber)', bg: 'color-mix(in srgb, var(--amber) 12%, transparent)' }
     return null
   }
   const nudge = getNudgeStyle()
 
   // ── ステータス表示 ────────────────────────────────
   const statusConf = {
-    none:     nudge || { label: '未出勤',   color: 'var(--t3)',     bg: 'rgba(148,163,184,.07)' },
-    working:  { label: stamp.workType === 'remote' ? '在宅勤務中' : '勤務中', color: stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)', bg: stamp.workType === 'remote' ? 'rgba(167,139,250,.1)' : 'rgba(52,211,153,.1)' },
-    done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'rgba(148,163,184,.07)' },
+    none:     nudge || { label: '未出勤',   color: 'var(--t3)',     bg: 'color-mix(in srgb, var(--t3) 10%, transparent)' },
+    working:  { label: stamp.workType === 'remote' ? '在宅勤務中' : '勤務中', color: stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)', bg: stamp.workType === 'remote' ? 'color-mix(in srgb, var(--purple) 12%, transparent)' : 'color-mix(in srgb, var(--green) 12%, transparent)' },
+    done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'color-mix(in srgb, var(--t2) 10%, transparent)' },
   }[stamp.status]
 
   const canIn     = stamp.status === 'none'
@@ -243,19 +243,24 @@ function StampBtn({ icon, label, color, disabled, onClick }: {
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: '16px 8px', borderRadius: 14,
-        border: `1.5px solid ${disabled ? 'var(--b)' : color}`,
-        background: disabled ? 'transparent' : `${color}18`,
+        padding: '18px 8px', borderRadius: 16,
+        border: disabled ? '1.5px solid var(--b)' : 'none',
+        background: disabled
+          ? 'var(--s2)'
+          : `linear-gradient(180deg, color-mix(in srgb, ${color} 18%, var(--s1)) 0%, color-mix(in srgb, ${color} 8%, var(--s1)) 100%)`,
         color: disabled ? 'var(--t3)' : color,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-        fontSize: 13, fontWeight: 600, opacity: disabled ? 0.35 : 1,
-        transition: 'all .15s', minHeight: 72,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        fontSize: 15, fontWeight: 600, opacity: disabled ? 0.5 : 1,
+        transition: 'all .2s', minHeight: 80,
         justifyContent: 'center',
+        boxShadow: disabled
+          ? 'none'
+          : `0 4px 14px color-mix(in srgb, ${color} 25%, transparent), 0 1px 3px color-mix(in srgb, ${color} 15%, transparent), inset 0 1px 0 rgba(255,255,255,.5)`,
         WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <span style={{ fontSize: 24 }}>{icon}</span>
+      <span style={{ fontSize: 28 }}>{icon}</span>
       {label}
     </button>
   )
@@ -268,10 +273,10 @@ function LogRow({ label, value, color, last }: {
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '10px 0',
-      borderBottom: last ? 'none' : '1px solid rgba(30,45,69,.5)',
+      borderBottom: last ? 'none' : '1px solid var(--b)',
     }}>
-      <span style={{ fontSize: 12, color: 'var(--t3)' }}>{label}</span>
-      <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 500, color: color ?? 'var(--t2)' }}>{value}</span>
+      <span style={{ fontSize: 14, color: 'var(--t2)' }}>{label}</span>
+      <span style={{ fontSize: 15, fontFamily: 'var(--font-inter), Inter, sans-serif', fontWeight: 500, color: color ?? 'var(--text)' }}>{value}</span>
     </div>
   )
 }
@@ -281,24 +286,26 @@ const S: Record<string, React.CSSProperties> = {
   app:     { display: 'flex', height: '100vh', overflow: 'hidden' },
   main:    { flex: 1, overflowY: 'auto', background: 'var(--bg)', paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' },
   page:    { padding: '20px 16px' },
-  pageTitle:{ fontSize: 20, fontWeight: 700, marginBottom: 4 },
-  pageSub: { fontSize: 13, color: 'var(--t2)', marginBottom: 20 },
+  pageTitle:{ fontSize: 22, fontWeight: 700, marginBottom: 4 },
+  pageSub: { fontSize: 14, color: 'var(--t2)', marginBottom: 20 },
   wrap:    { maxWidth: 480, margin: '0 auto' },
   timeDisplay: {
     textAlign: 'center', padding: '32px 16px 28px',
     background: 'var(--s1)', border: '1px solid var(--b)',
     borderRadius: 18, marginBottom: 14,
+    boxShadow: '0 2px 8px rgba(99,102,241,.06)',
   },
-  clock:     { fontFamily: 'DM Mono, monospace', fontSize: 44, fontWeight: 400, letterSpacing: '0.06em', lineHeight: 1 },
-  clockDate: { fontSize: 12, color: 'var(--t2)', marginTop: 8 },
+  clock:     { fontFamily: 'var(--font-inter), Inter, sans-serif', fontSize: 44, fontWeight: 400, letterSpacing: '0.06em', lineHeight: 1 },
+  clockDate: { fontSize: 14, color: 'var(--t2)', marginTop: 8 },
   statusPill:{
     display: 'inline-flex', alignItems: 'center', marginTop: 12,
-    padding: '5px 14px', borderRadius: 20, fontSize: 12,
-    fontFamily: 'DM Mono, monospace', border: '1px solid rgba(255,255,255,.1)',
+    padding: '6px 16px', borderRadius: 20, fontSize: 13,
+    fontFamily: 'var(--font-inter), Inter, sans-serif', border: '1px solid var(--b)',
   },
   todayLog: {
     background: 'var(--s1)', border: '1px solid var(--b)',
     borderRadius: 14, padding: '4px 16px',
+    boxShadow: '0 1px 4px rgba(99,102,241,.05)',
   },
   toast: {
     position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',

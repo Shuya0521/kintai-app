@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Dark theme (default) ── */
   --bg:     #080c14;
   --s1:     #0f1623;
   --s2:     #161f30;
@@ -23,6 +24,25 @@
   --sidebar-w: 220px;
 }
 
+/* ── Light theme: Lavender Silk ── */
+[data-theme="light"] {
+  --bg:     #faf8fc;
+  --s1:     #ffffff;
+  --s2:     #f5f3f8;
+  --s3:     #eee9f2;
+  --b:      #e0d8e8;
+  --b2:     #d1c7db;
+  --acc:    #6366f1;
+  --green:  #10b981;
+  --amber:  #d97706;
+  --orange: #e77c5a;
+  --red:    #e05a6f;
+  --purple: #8b5cf6;
+  --text:   #2d2640;
+  --t2:     #6b6080;
+  --t3:     #a89dba;
+}
+
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
 }
@@ -30,9 +50,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Noto Sans JP', sans-serif;
+  font-family: 'Zen Maru Gothic', sans-serif;
   background: var(--bg);
   color: var(--text);
+  line-height: 1.7;
+  letter-spacing: 0.03em;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
