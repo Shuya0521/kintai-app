@@ -10,26 +10,25 @@ export async function GET() {
   const year = now.getFullYear()
   const month = now.getMonth() + 1
 
-  const todayRecords = await prisma.attendance.findMany({
-    where: { date: today },
-    include: { user: { select: { id: true, lastName: true, firstName: true, department: true, role: true } } },
-  })
-
-  const pendingApprovals = await prisma.approval.count({
-    where: { approverId: me.id, status: 'pending' },
-  })
-
-  const totalUsers = await prisma.user.count({ where: { status: 'active' } })
-  const pendingUsers = await prisma.user.count({ where: { status: 'pending' } })
-
-  const overtimeRecords = await prisma.overtimeRecord.findMany({
-    where: { year, month },
-  })
+  // 全クエリを並列実行して応答速度を改善
+  const [todayRecords, pendingApprovals, totalUsers, pendingUsers, overtimeRecords, todayLeaves] = await Promise.all([
+    prisma.attendance.findMany({
+      where: { date: today },
+      include: { user: { select: { id: true, lastName: true, firstName: true, department: true, role: true } } },
+    }),
+    prisma.approval.count({
+      where: { approverId: me.id, status: 'pending' },
+    }),
+    prisma.user.count({ where: { status: 'active' } }),
+    prisma.user.count({ where: { status: 'pending' } }),
+    prisma.overtimeRecord.findMany({
+      where: { year, month },
+    }),
+    prisma.leaveRequest.count({
+      where: { status: 'approved', startDate: { lte: today }, endDate: { gte: today } },
+    }),
+  ])
   const overtimeWarnings = overtimeRecords.filter(r => r.totalMin > 45 * 60).length
-
-  const todayLeaves = await prisma.leaveRequest.count({
-    where: { status: 'approved', startDate: { lte: today }, endDate: { gte: today } },
-  })
 
   return jsonOk({
     today: {

@@ -1,42 +1,12 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-
+/**
+ * ルートページ — 打刻画面へ即座にリダイレクト
+ *
+ * middlewareが認証チェック済みのため、ここに到達した時点で
+ * ログイン済みが確定。クライアント側のAPI呼び出しを省略して
+ * サーバーサイドで即座にリダイレクトすることで初回表示を高速化。
+ */
 export default function Home() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // ログイン済みかチェック → 打刻画面へ、未ログインならログイン画面へ
-    fetch('/api/auth/me')
-      .then(res => {
-        if (res.ok) {
-          router.replace('/stamp')
-        } else {
-          sessionStorage.removeItem('user')
-          router.replace('/login')
-        }
-      })
-      .catch(() => {
-        router.replace('/login')
-      })
-  }, [router])
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080c14',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        color: '#94a3b8',
-        fontSize: '14px',
-        fontFamily: "'Noto Sans JP', sans-serif",
-      }}>
-        読み込み中...
-      </div>
-    </div>
-  )
+  redirect('/stamp')
 }
