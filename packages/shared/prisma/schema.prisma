@@ -65,7 +65,7 @@ model Attendance {
   earlyLeaveMin   Int       @default(0)     // 早退分数
   isHolidayWork   Boolean   @default(false) // 休日出勤フラグ
   workPlace       String    @default("office") // office|remote
-  status          String    @default("working") // working|breaking|done|holiday
+  status          String    @default("none") // none|working|breaking|done|holiday
   note            String    @default("")    // 備考
 
   createdAt       DateTime  @default(now())

@@ -69,12 +69,15 @@ export default function StampPage() {
       const data = await apiGet('/api/attendance?range=today')
       const att = data?.attendance
       // レコードがない場合（null）は初期状態にリセット
+      // checkInTime が未設定なのに status が working の場合は none に補正
+      const rawStatus = att?.status || 'none'
+      const correctedStatus = (!att?.checkInTime && rawStatus === 'working') ? 'none' : rawStatus
       setStamp(s => ({
         ...s,
         inTime: att?.checkInTime ? new Date(att.checkInTime).getTime() : null,
         outTime: att?.checkOutTime ? new Date(att.checkOutTime).getTime() : null,
         breakTotal: att?.breakTotalMin || 0,
-        status: att?.status || 'none',
+        status: correctedStatus,
         workType: att?.workPlace || 'office',
       }))
       // ソーシャルプルーフ取得
@@ -167,7 +170,7 @@ export default function StampPage() {
     done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'rgba(148,163,184,.07)' },
   }[stamp.status]
 
-  const canIn     = stamp.status === 'none'
+  const canIn     = stamp.status === 'none' || (!stamp.inTime && stamp.status !== 'done')
   const canOut    = stamp.status === 'working'
 
   const fmt = (ts: number | null) =>
