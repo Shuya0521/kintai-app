@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         where: { id: request.id },
         data: { status: 'approved', processedAt: new Date() },
       })
-      return NextResponse.json({ success: true, request, autoApproved: true })
+      return jsonOk({ success: true, request, autoApproved: true })
     }
 
     // 承認者ロール検索: まず同部署、なければ全社から

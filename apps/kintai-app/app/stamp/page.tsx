@@ -35,7 +35,7 @@ export default function StampPage() {
       try {
         const data = await apiGet('/api/auth/me')
         setUser(data.user)
-        sessionStorage.setItem('user', JSON.stringify(data.user))
+        try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
       } catch {
         router.push('/login')
       }
@@ -173,7 +173,19 @@ export default function StampPage() {
   const fmt = (ts: number | null) =>
     ts ? new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'
 
-  if (!user) return null
+  if (!user) return (
+    <div style={S.app}>
+      <Sidebar active="stamp" />
+      <main style={S.main}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+          <div style={{ textAlign: 'center', color: 'var(--t2)' }}>
+            <div style={{ fontSize: 28, marginBottom: 12, animation: 'spin 1s linear infinite' }}>⏳</div>
+            <div style={{ fontSize: 13 }}>読み込み中...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
 
   return (
     <div style={S.app}>

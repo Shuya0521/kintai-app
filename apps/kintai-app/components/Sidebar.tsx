@@ -15,14 +15,18 @@ export default function Sidebar({ active }: { active: string }) {
   const [user, setUser] = useState<{ name: string; role: string; av: string } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showLogout, setShowLogout] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
   useEffect(() => {
-    const u = sessionStorage.getItem('user')
-    if (u) {
-      const parsed = JSON.parse(u)
-      const name = parsed.name || `${parsed.lastName || ''} ${parsed.firstName || ''}`.trim() || '?'
-      setUser({ name, role: parsed.role || '', av: name[0] || '?' })
+    try {
+      const u = sessionStorage.getItem('user')
+      if (u) {
+        const parsed = JSON.parse(u)
+        const name = parsed.name || `${parsed.lastName || ''} ${parsed.firstName || ''}`.trim() || '?'
+        setUser({ name, role: parsed.role || '', av: name[0] || '?' })
+      }
+    } catch {
+      // sessionStorage unavailable (private browsing etc.)
     }
   }, [])
 
@@ -36,7 +40,7 @@ export default function Sidebar({ active }: { active: string }) {
   const handleLogout = () => {
     fetch('/api/auth/logout', { method: 'POST' })
       .finally(() => {
-        sessionStorage.removeItem('user')
+        try { sessionStorage.removeItem('user') } catch { /* private browsing */ }
         router.push('/login')
       })
   }
@@ -54,6 +58,45 @@ export default function Sidebar({ active }: { active: string }) {
       </div>
     </div>
   )
+
+  // ── 初回レンダリング（SSR/hydration中）はCSSで制御 ──
+  if (isMobile === null) {
+    return (
+      <>
+        {/* デスクトップ用: 768px超で表示 */}
+        <aside style={S.sidebar} className="sidebar-desktop">
+          <div style={S.logo}>
+            KINTAI
+            <span style={S.logoSub}>勤怠管理システム</span>
+          </div>
+          <nav style={S.nav}>
+            {NAV.map(n => (
+              <div key={n.id} style={{ ...S.item, ...(active === n.id ? S.itemActive : {}) }}
+                onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}>
+                <span style={S.icon}>{n.icon}</span>
+                <span style={{ flex: 1 }}>{n.label}</span>
+              </div>
+            ))}
+          </nav>
+        </aside>
+        {/* モバイル用: 768px以下で表示 */}
+        <nav style={M.bottomBar} className="sidebar-mobile">
+          {NAV.map(n => (
+            <div key={n.id} style={{ ...M.tab, color: active === n.id ? 'var(--acc)' : 'var(--t3)' }}
+              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}>
+              <span style={M.tabIcon}>{n.icon}</span>
+              <span style={M.tabLabel}>{n.label}</span>
+            </div>
+          ))}
+          <div style={{ ...M.tab, color: 'var(--t3)' }} onClick={() => setShowLogout(true)}>
+            <span style={M.tabIcon}>⏻</span>
+            <span style={M.tabLabel}>その他</span>
+          </div>
+        </nav>
+        {logoutModal}
+      </>
+    )
+  }
 
   // ── モバイル版 ──────────────────────────────────────
   if (isMobile) {

@@ -60,6 +60,17 @@ input, select, textarea {
 /* Sidebar offset for main content */
 main { margin-left: var(--sidebar-w); }
 
+/* Sidebar responsive: CSS-based show/hide for SSR compatibility */
+@media (max-width: 768px) {
+  .sidebar-desktop { display: none !important; }
+  .sidebar-mobile  { display: flex !important; }
+  main { margin-left: 0 !important; }
+}
+@media (min-width: 769px) {
+  .sidebar-mobile  { display: none !important; }
+  .sidebar-desktop { display: flex !important; }
+}
+
 /* Hide scrollbar on mobile for cleaner look */
 @media (max-width: 768px) {
   ::-webkit-scrollbar { display: none; }

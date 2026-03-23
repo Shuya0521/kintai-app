@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_JP } from 'next/font/google'
 import './globals.css'
 
@@ -8,9 +8,24 @@ const notoSansJP = Noto_Sans_JP({
   display: 'swap',
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+}
+
 export const metadata: Metadata = {
   title: '勤怠管理システム',
   description: '勤怠管理システム',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+  },
+  other: {
+    'apple-touch-icon': '/icon-192.png',
+  },
 }
 
 export default function RootLayout({
@@ -21,9 +36,6 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className={notoSansJP.className}>

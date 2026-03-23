@@ -23,11 +23,13 @@ export default function LoginPage() {
   const [quickUsers, setQuickUsers] = useState<QuickUser[]>([])
 
   useEffect(() => {
-    const saved = localStorage.getItem('kintai_app_email')
-    if (saved) {
-      setEmail(saved)
-      setRemember(true)
-    }
+    try {
+      const saved = localStorage.getItem('kintai_app_email')
+      if (saved) {
+        setEmail(saved)
+        setRemember(true)
+      }
+    } catch { /* private browsing */ }
     fetch('/api/auth/quicklogin')
       .then(r => r.json())
       .then(data => setQuickUsers(data.users || []))
@@ -38,11 +40,13 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    if (remember) {
-      localStorage.setItem('kintai_app_email', email)
-    } else {
-      localStorage.removeItem('kintai_app_email')
-    }
+    try {
+      if (remember) {
+        localStorage.setItem('kintai_app_email', email)
+      } else {
+        localStorage.removeItem('kintai_app_email')
+      }
+    } catch { /* private browsing */ }
 
     if (!email.trim() || !password.trim()) {
       setError('メールアドレスとパスワードを入力してください')
@@ -65,7 +69,7 @@ export default function LoginPage() {
         return
       }
 
-      sessionStorage.setItem('user', JSON.stringify(data.user))
+      try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
       router.push('/stamp')
     } catch (err) {
       setError('通信エラーが発生しました')

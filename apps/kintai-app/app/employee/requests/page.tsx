@@ -50,7 +50,7 @@ export default function RequestsPage() {
     apiGet('/api/auth/me').then(data => {
       setUser(data.user)
       setPaidLeave(data.user.paidLeaveBalance ?? 0)
-      sessionStorage.setItem('user', JSON.stringify(data.user))
+      try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
     }).catch(() => router.push('/login'))
   }, [router])
 

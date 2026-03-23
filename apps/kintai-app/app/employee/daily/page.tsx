@@ -22,9 +22,10 @@ export default function DailyPage() {
   const [toast, setToast] = useState('')
 
   useEffect(() => {
-    const u = sessionStorage.getItem('user')
-    if (!u) { router.push('/login'); return }
-    setUser(JSON.parse(u))
+    apiGet('/api/auth/me').then(data => {
+      setUser(data.user)
+      try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
+    }).catch(() => router.push('/login'))
   }, [router])
 
   useEffect(() => {
