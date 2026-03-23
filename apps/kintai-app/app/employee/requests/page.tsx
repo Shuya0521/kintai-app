@@ -88,7 +88,7 @@ export default function RequestsPage() {
                   <div
                     key={i}
                     style={{ ...S.typeCard, ...(isSel ? S.typeCardSelected : {}) }}
-                    onClick={() => setSelected(i)}
+                    onClick={() => { setSelected(i); if (i === 1 || i === 2) setEndDate(startDate) }}
                   >
                     {isSel && (
                       <div style={{ position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: '50%', background: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -107,12 +107,14 @@ export default function RequestsPage() {
             <div style={S.formRow}>
               <div>
                 <label style={S.label}>開始日 *</label>
-                <input style={S.input} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <input style={S.input} type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setEndDate(e.target.value) }} />
               </div>
+              {selected !== 1 && selected !== 2 && (
               <div>
                 <label style={S.label}>終了日 *</label>
-                <input style={S.input} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                <input style={S.input} type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
               </div>
+              )}
             </div>
 
             {/* 理由 */}
