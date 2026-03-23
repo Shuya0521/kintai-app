@@ -1,0 +1,30 @@
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { getCurrentUser, jsonOk, jsonError } from '@/lib/auth'
+
+/** 指定日付の自分の勤怠レコードを取得 */
+export async function GET(req: NextRequest) {
+  const me = await getCurrentUser()
+  if (!me) return jsonError('認証が必要です', 401)
+
+  const date = req.nextUrl.searchParams.get('date')
+  if (!date) return jsonError('日付を指定してください', 400)
+
+  const attendance = await prisma.attendance.findUnique({
+    where: { userId_date: { userId: me.id, date } },
+    select: {
+      id: true,
+      date: true,
+      checkInTime: true,
+      checkOutTime: true,
+      breakTotalMin: true,
+      workPlace: true,
+      note: true,
+      status: true,
+    },
+  })
+
+  if (!attendance) return jsonError('該当日の勤怠レコードが見つかりません', 404)
+
+  return jsonOk({ attendance })
+}
