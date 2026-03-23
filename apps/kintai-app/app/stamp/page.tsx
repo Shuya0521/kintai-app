@@ -28,6 +28,7 @@ export default function StampPage() {
     inTime: null, outTime: null,
     breakTotal: 0, status: 'none', workType: 'office',
   })
+  const [stampLoaded, setStampLoaded] = useState(false)
 
   // ── ユーザー取得 ──────────────────────────────────
   useEffect(() => {
@@ -86,6 +87,8 @@ export default function StampPage() {
       }
     } catch {
       // Silent fail - use local state default
+    } finally {
+      setStampLoaded(true)
     }
   }, [])
 
@@ -176,7 +179,7 @@ export default function StampPage() {
   const fmt = (ts: number | null) =>
     ts ? new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'
 
-  if (!user) return (
+  if (!user || !stampLoaded) return (
     <div style={S.app}>
       <Sidebar active="stamp" />
       <main style={S.main}>
