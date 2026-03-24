@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { apiGet, apiPost } from '@/lib/api'
@@ -17,32 +17,70 @@ interface StampState {
   workType:   WorkType
 }
 
+// ── キャッシュヘルパー ────────────────────────────────
+function getCachedUser() {
+  try { const c = sessionStorage.getItem('user'); return c ? JSON.parse(c) : null } catch { return null }
+}
+function getCachedAttendance() {
+  try {
+    const c = sessionStorage.getItem('att_' + getTodayStr())
+    return c ? JSON.parse(c) : null
+  } catch { return null }
+}
+function applyAttendance(att: Record<string, unknown> | null) {
+  const rawStatus = (att?.status as StampStatus) || 'none'
+  const correctedStatus = (!att?.checkInTime && rawStatus === 'working') ? 'none' : rawStatus
+  return {
+    inTime: att?.checkInTime ? new Date(att.checkInTime as string).getTime() : null,
+    outTime: att?.checkOutTime ? new Date(att.checkOutTime as string).getTime() : null,
+    breakTotal: (att?.breakTotalMin as number) || 0,
+    status: correctedStatus as StampStatus,
+    workType: ((att?.workPlace as WorkType) || 'office'),
+  }
+}
+
 export default function StampPage() {
   const router = useRouter()
-  const [user, setUser]   = useState<{ name: string; role: string; av: string } | null>(null)
+  const cachedUser = getCachedUser()
+  const cachedAtt = getCachedAttendance()
+  const [user, setUser]   = useState<{ name: string; role: string; av: string } | null>(cachedUser)
   const [clock, setClock] = useState('--:--:--')
   const [date,  setDate]  = useState('')
   const [toast, setToast] = useState<{ msg: string; icon: string } | null>(null)
   const [socialProof, setSocialProof] = useState<{ checkedIn: number; total: number } | null>(null)
-  const [stamp, setStamp] = useState<StampState>({
+  const [stamp, setStamp] = useState<StampState>(cachedAtt ? applyAttendance(cachedAtt) : {
     inTime: null, outTime: null,
     breakTotal: 0, status: 'none', workType: 'office',
   })
-  const [stampLoaded, setStampLoaded] = useState(false)
+  const [apiVerified, setApiVerified] = useState(false)
+  const initRef = useRef(false)
 
-  // ── ユーザー取得 ──────────────────────────────────
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const data = await apiGet('/api/auth/me')
-        setUser(data.user)
-        try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
-      } catch {
-        router.push('/login')
-      }
+  // ── 統合API: ユーザー + 勤怠を1リクエストで取得 ────────────
+  const loadInit = useCallback(async () => {
+    try {
+      const data = await apiGet('/api/stamp/init')
+      // ユーザー情報
+      setUser(data.user)
+      try { sessionStorage.setItem('user', JSON.stringify(data.user)) } catch { /* private browsing */ }
+      // 勤怠情報
+      const att = data.attendance
+      setStamp(applyAttendance(att))
+      try { sessionStorage.setItem('att_' + getTodayStr(), JSON.stringify(att)) } catch {}
+      // ソーシャルプルーフ
+      if (data.socialProof) setSocialProof(data.socialProof)
+    } catch {
+      router.push('/login')
+    } finally {
+      setApiVerified(true)
     }
-    loadUser()
   }, [router])
+
+  useEffect(() => {
+    if (!initRef.current) {
+      initRef.current = true
+      loadInit()
+    }
+  }, [loadInit])
 
   // ── 日付変更検知用 state ─────────────────────────────
   const [currentDate, setCurrentDate] = useState(getTodayStr())
@@ -53,48 +91,16 @@ export default function StampPage() {
       const now = new Date()
       setClock(now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
       setDate(now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }))
-      // 日付が変わったら検知して勤怠データを再取得させる
       const today = getTodayStr()
       if (today !== currentDate) {
         setCurrentDate(today)
+        loadInit() // 日付変更時に再取得
       }
     }
     tick()
     const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [currentDate])
-
-  // ── 今日の勤務データ取得 ────────────────────────────
-  const loadTodayAttendance = useCallback(async () => {
-    try {
-      const data = await apiGet('/api/attendance?range=today')
-      const att = data?.attendance
-      // レコードがない場合（null）は初期状態にリセット
-      // checkInTime が未設定なのに status が working の場合は none に補正
-      const rawStatus = att?.status || 'none'
-      const correctedStatus = (!att?.checkInTime && rawStatus === 'working') ? 'none' : rawStatus
-      setStamp(s => ({
-        ...s,
-        inTime: att?.checkInTime ? new Date(att.checkInTime).getTime() : null,
-        outTime: att?.checkOutTime ? new Date(att.checkOutTime).getTime() : null,
-        breakTotal: att?.breakTotalMin || 0,
-        status: correctedStatus,
-        workType: att?.workPlace || 'office',
-      }))
-      // ソーシャルプルーフ取得
-      if (data?.socialProof) {
-        setSocialProof(data.socialProof)
-      }
-    } catch {
-      // Silent fail - use local state default
-    } finally {
-      setStampLoaded(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadTodayAttendance()
-  }, [currentDate, loadTodayAttendance])
+  }, [currentDate, loadInit])
 
   // ── トースト ──────────────────────────────────────
   const showToast = (msg: string, icon = '✅') => {
@@ -137,6 +143,7 @@ export default function StampPage() {
           status: att.status || s.status,
           workType: att.workPlace || s.workType,
         }))
+        try { sessionStorage.setItem('att_' + getTodayStr(), JSON.stringify(att)) } catch {}
       }
     } catch (error) {
       showToast('エラーが発生しました', '❌')
@@ -173,13 +180,13 @@ export default function StampPage() {
     done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'rgba(148,163,184,.07)' },
   }[stamp.status]
 
-  const canIn     = stamp.status === 'none' || (!stamp.inTime && stamp.status !== 'done')
-  const canOut    = stamp.status === 'working'
+  const canIn     = apiVerified && (stamp.status === 'none' || (!stamp.inTime && stamp.status !== 'done'))
+  const canOut    = apiVerified && stamp.status === 'working'
 
   const fmt = (ts: number | null) =>
     ts ? new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'
 
-  if (!user || !stampLoaded) return (
+  if (!user) return (
     <div style={S.app}>
       <Sidebar active="stamp" />
       <main style={S.main}>
