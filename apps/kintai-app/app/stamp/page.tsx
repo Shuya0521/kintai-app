@@ -53,6 +53,7 @@ export default function StampPage() {
     breakTotal: 0, status: 'none', workType: 'office',
   })
   const [apiVerified, setApiVerified] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const initRef = useRef(false)
 
   // ── 統合API: ユーザー + 勤怠を1リクエストで取得 ────────────
@@ -110,6 +111,8 @@ export default function StampPage() {
 
   // ── 打刻処理 ──────────────────────────────────────
   const doStamp = async (type: 'in' | 'remote' | 'out') => {
+    if (submitting) return
+    setSubmitting(true)
     const time = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
     try {
       let action: string
@@ -147,6 +150,8 @@ export default function StampPage() {
       }
     } catch (error) {
       showToast('エラーが発生しました', '❌')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -180,8 +185,8 @@ export default function StampPage() {
     done:     { label: '退勤済',   color: 'var(--t2)',     bg: 'rgba(148,163,184,.07)' },
   }[stamp.status]
 
-  const canIn     = apiVerified && (stamp.status === 'none' || (!stamp.inTime && stamp.status !== 'done'))
-  const canOut    = apiVerified && stamp.status === 'working'
+  const canIn     = apiVerified && !submitting && (stamp.status === 'none' || (!stamp.inTime && stamp.status !== 'done'))
+  const canOut    = apiVerified && !submitting && stamp.status === 'working'
 
   const fmt = (ts: number | null) =>
     ts ? new Date(ts).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '—'
@@ -228,9 +233,9 @@ export default function StampPage() {
 
             {/* 出勤・在宅・退勤 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <StampBtn icon="🏢" label="出勤"     color="var(--green)"  disabled={!canIn}    onClick={() => doStamp('in')} />
-              <StampBtn icon="🏠" label="在宅勤務"  color="var(--purple)" disabled={!canIn}    onClick={() => doStamp('remote')} />
-              <StampBtn icon="🔴" label="退勤"     color="var(--red)"    disabled={!canOut}   onClick={() => doStamp('out')} />
+              <StampBtn icon="🏢" label="出勤"     color="var(--green)"  disabled={!canIn}    loading={submitting} onClick={() => doStamp('in')} />
+              <StampBtn icon="🏠" label="在宅勤務"  color="var(--purple)" disabled={!canIn}    loading={submitting} onClick={() => doStamp('remote')} />
+              <StampBtn icon="🔴" label="退勤"     color="var(--red)"    disabled={!canOut}   loading={submitting} onClick={() => doStamp('out')} />
             </div>
 
             {/* 今日のログ */}
@@ -260,9 +265,10 @@ export default function StampPage() {
 }
 
 // ── サブコンポーネント ─────────────────────────────
-function StampBtn({ icon, label, color, disabled, onClick }: {
-  icon: string; label: string; color: string; disabled: boolean; onClick: () => void
+function StampBtn({ icon, label, color, disabled, loading, onClick }: {
+  icon: string; label: string; color: string; disabled: boolean; loading?: boolean; onClick: () => void
 }) {
+  const isActive = !disabled && loading
   return (
     <button
       onClick={onClick}
@@ -275,13 +281,13 @@ function StampBtn({ icon, label, color, disabled, onClick }: {
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
         fontSize: 13, fontWeight: 600, opacity: disabled ? 0.35 : 1,
-        transition: 'all .15s', minHeight: 72,
+        transition: 'opacity .1s, border-color .1s', minHeight: 72,
         justifyContent: 'center',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <span style={{ fontSize: 24 }}>{icon}</span>
-      {label}
+      <span style={{ fontSize: 24 }}>{isActive ? '⏳' : icon}</span>
+      {isActive ? '処理中...' : label}
     </button>
   )
 }
