@@ -37,10 +37,10 @@ export function formatDateFullJP(dateStr: string): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${days[d.getDay()]})`
 }
 
-/** YYYY-MM-DD 形式で今日の日付を返す */
+/** YYYY-MM-DD 形式で今日の日付を返す（日本時間 JST = UTC+9） */
 export function getTodayStr(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const d = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
 /** ユーザー名をフルネームで返す */
