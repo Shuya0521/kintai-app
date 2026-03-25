@@ -19,13 +19,16 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: '勤怠管理システム',
-  description: '勤怠管理システム',
+  description: '出退勤の打刻・勤怠管理アプリ',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
+    title: '勤怠',
   },
   other: {
-    'apple-touch-icon': '/icon-192.png',
+    'apple-touch-icon': '/icons/icon-192.png',
+    'mobile-web-app-capable': 'yes',
   },
 }
 
@@ -37,10 +40,28 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="theme-color" content="#080c14" />
       </head>
       <body className={notoSansJP.className}>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(reg) {
+                      console.log('SW registered:', reg.scope);
+                    })
+                    .catch(function(err) {
+                      console.log('SW registration failed:', err);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   )
