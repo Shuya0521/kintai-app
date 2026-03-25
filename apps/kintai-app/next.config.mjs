@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
-  experimental: { instrumentationHook: true },
+  output: process.env.RENDER ? 'standalone' : undefined,
   transpilePackages: ['@kintai/shared'],
   compress: true,
   productionBrowserSourceMaps: false,

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd packages/shared && npx prisma generate && cd ../.. && npm run build:app",
+  "outputDirectory": "apps/kintai-app/.next",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+}
