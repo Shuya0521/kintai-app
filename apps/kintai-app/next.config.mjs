@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  experimental: { instrumentationHook: true },
   transpilePackages: ['@kintai/shared'],
   compress: true,
   productionBrowserSourceMaps: false,
