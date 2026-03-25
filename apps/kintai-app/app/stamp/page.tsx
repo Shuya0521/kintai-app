@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { apiGet, apiPost } from '@/lib/api'
@@ -83,25 +83,28 @@ export default function StampPage() {
     }
   }, [loadInit])
 
-  // ── 日付変更検知用 state ─────────────────────────────
-  const [currentDate, setCurrentDate] = useState(getTodayStr())
+  // ── 日付変更検知用 ref（再レンダリング防止） ─────────────────
+  const currentDateRef = useRef(getTodayStr())
+  const loadInitRef = useRef(loadInit)
+  loadInitRef.current = loadInit
 
-  // ── 時計 ──────────────────────────────────────────
+  // ── 時計（依存配列を空にしてタイマー再作成を防止） ────────────
   useEffect(() => {
     const tick = () => {
       const now = new Date()
       setClock(now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
       setDate(now.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }))
       const today = getTodayStr()
-      if (today !== currentDate) {
-        setCurrentDate(today)
-        loadInit() // 日付変更時に再取得
+      if (today !== currentDateRef.current) {
+        currentDateRef.current = today
+        loadInitRef.current() // 日付変更時に再取得
       }
     }
     tick()
     const timer = setInterval(tick, 1000)
     return () => clearInterval(timer)
-  }, [currentDate, loadInit])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── トースト ──────────────────────────────────────
   const showToast = (msg: string, icon = '✅') => {
@@ -284,6 +287,9 @@ function StampBtn({ icon, label, color, disabled, loading, onClick }: {
         transition: 'opacity .1s, border-color .1s', minHeight: 72,
         justifyContent: 'center',
         WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
     >
       <span style={{ fontSize: 24 }}>{isActive ? '⏳' : icon}</span>

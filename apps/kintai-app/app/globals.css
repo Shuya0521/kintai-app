@@ -36,6 +36,7 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 /* iPhone safe area padding */
@@ -69,6 +70,14 @@ main { margin-left: var(--sidebar-w); }
 @media (min-width: 769px) {
   .sidebar-mobile  { display: none !important; }
   .sidebar-desktop { display: flex !important; }
+}
+
+/* Faster button response on mobile */
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Hide scrollbar on mobile for cleaner look */

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   transpilePackages: ['@kintai/shared'],
+  compress: true,
+  productionBrowserSourceMaps: false,
+  optimizePackageImports: ['@kintai/shared'],
 
   async headers() {
     return [

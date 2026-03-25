@@ -4,7 +4,8 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && cd packages/shared && npx prisma generate && cd ../.. && npm run build:app
-    startCommand: npm run start --workspace=apps/kintai-app
+    startCommand: node apps/kintai-app/.next/standalone/apps/kintai-app/server.js
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
