@@ -1,0 +1,10 @@
+勤怠ｱﾌﾟﾘ_backup_*
+勤怠ｱﾌﾟﾘ.zip
+.claude/
+e2e/
+docs/
+*.db
+*.db-journal
+*.tar
+*.zip
+coverage/
