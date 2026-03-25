@@ -1,13 +1,14 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const NAV = [
-  { id: 'stamp',    icon: '⏱', label: '打刻' },
-  { id: 'daily',    icon: '📅', label: '日次一覧' },
-  { id: 'monthly',  icon: '📊', label: '月次サマリ' },
-  { id: 'requests', icon: '📋', label: '申請' },
+  { id: 'stamp',    href: '/stamp',             icon: '⏱', label: '打刻' },
+  { id: 'daily',    href: '/employee/daily',     icon: '📅', label: '日次一覧' },
+  { id: 'monthly',  href: '/employee/monthly',   icon: '📊', label: '月次サマリ' },
+  { id: 'requests', href: '/employee/requests',  icon: '📋', label: '申請' },
 ]
 
 export default function Sidebar({ active }: { active: string }) {
@@ -15,7 +16,6 @@ export default function Sidebar({ active }: { active: string }) {
   const [user, setUser] = useState<{ name: string; role: string; av: string } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showLogout, setShowLogout] = useState(false)
-  const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
   useEffect(() => {
     try {
@@ -30,24 +30,38 @@ export default function Sidebar({ active }: { active: string }) {
     }
   }, [])
 
+  // ── resize は debounce して不要な再レンダリングを防止 ──
+  const [isMobile, setIsMobile] = useState<boolean | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768)
-    check()
+    const check = () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setIsMobile(window.innerWidth <= 768)
+      }, 150)
+    }
+    // 初回は即座に判定
+    setIsMobile(window.innerWidth <= 768)
     window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
+    return () => {
+      window.removeEventListener('resize', check)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [])
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     fetch('/api/auth/logout', { method: 'POST' })
       .finally(() => {
         try { sessionStorage.removeItem('user') } catch { /* private browsing */ }
         router.push('/login')
       })
-  }
+  }, [router])
 
   const logoutModal = showLogout && (
-    <div style={S.modalOverlay}>
-      <div style={{ ...S.modalBox, ...(isMobile ? { width: 'calc(100vw - 48px)', maxWidth: 320 } : {}) }}>
+    <div style={S.modalOverlay} onClick={() => setShowLogout(false)}>
+      <div style={{ ...S.modalBox, ...(isMobile ? { width: 'calc(100vw - 48px)', maxWidth: 320 } : {}) }}
+        onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 36, marginBottom: 12 }}>⏻</div>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>ログアウトしますか？</div>
         <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 24 }}>{user?.name} さん</div>
@@ -59,110 +73,74 @@ export default function Sidebar({ active }: { active: string }) {
     </div>
   )
 
-  // ── 初回レンダリング（SSR/hydration中）はCSSで制御 ──
-  if (isMobile === null) {
-    return (
-      <>
-        {/* デスクトップ用: 768px超で表示 */}
-        <aside style={S.sidebar} className="sidebar-desktop">
-          <div style={S.logo}>
-            KINTAI
-            <span style={S.logoSub}>勤怠管理システム</span>
-          </div>
-          <nav style={S.nav}>
-            {NAV.map(n => (
-              <div key={n.id} style={{ ...S.item, ...(active === n.id ? S.itemActive : {}) }}
-                onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}>
-                <span style={S.icon}>{n.icon}</span>
-                <span style={{ flex: 1 }}>{n.label}</span>
-              </div>
-            ))}
-          </nav>
-        </aside>
-        {/* モバイル用: 768px以下で表示 */}
-        <nav style={M.bottomBar} className="sidebar-mobile">
-          {NAV.map(n => (
-            <div key={n.id} style={{ ...M.tab, color: active === n.id ? 'var(--acc)' : 'var(--t3)' }}
-              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}>
-              <span style={M.tabIcon}>{n.icon}</span>
-              <span style={M.tabLabel}>{n.label}</span>
-            </div>
-          ))}
-          <div style={{ ...M.tab, color: 'var(--t3)' }} onClick={() => setShowLogout(true)}>
-            <span style={M.tabIcon}>⏻</span>
-            <span style={M.tabLabel}>その他</span>
-          </div>
-        </nav>
-        {logoutModal}
-      </>
-    )
-  }
+  // ── デスクトップ用サイドバー（常にレンダリング、CSSで表示制御） ──
+  const desktopSidebar = (
+    <aside style={S.sidebar} className="sidebar-desktop">
+      <div style={S.logo}>
+        KINTAI
+        <span style={S.logoSub}>勤怠管理システム</span>
+      </div>
 
-  // ── モバイル版 ──────────────────────────────────────
-  if (isMobile) {
-    return (
-      <>
-        <nav style={M.bottomBar}>
-          {NAV.map(n => (
-            <div
-              key={n.id}
-              style={{ ...M.tab, color: active === n.id ? 'var(--acc)' : 'var(--t3)' }}
-              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}
-            >
-              <span style={M.tabIcon}>{n.icon}</span>
-              <span style={M.tabLabel}>{n.label}</span>
-            </div>
-          ))}
-          <div
-            style={{ ...M.tab, color: 'var(--t3)' }}
-            onClick={() => setShowLogout(true)}
+      <nav style={S.nav}>
+        {NAV.map(n => (
+          <Link
+            key={n.id}
+            href={n.href}
+            prefetch={true}
+            style={{ ...S.item, ...(active === n.id ? S.itemActive : {}), textDecoration: 'none' }}
           >
-            <span style={M.tabIcon}>⏻</span>
-            <span style={M.tabLabel}>その他</span>
-          </div>
-        </nav>
-        {logoutModal}
-      </>
-    )
-  }
+            <span style={S.icon}>{n.icon}</span>
+            <span style={{ flex: 1 }}>{n.label}</span>
+          </Link>
+        ))}
+      </nav>
 
-  // ── デスクトップ版 ──────────────────────────────────
+      <div style={S.userBtn} onClick={() => setMenuOpen(o => !o)}>
+        <div style={S.avatar}>{user?.av ?? '?'}</div>
+        <div style={{ flex: 1 }}>
+          <div style={S.userName}>{user?.name}</div>
+          <div style={S.userRole}>{user?.role}</div>
+        </div>
+        <span style={{ fontSize: 9, color: 'var(--t3)', transform: menuOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▲</span>
+      </div>
+
+      <div style={{ ...S.logoutMenu, maxHeight: menuOpen ? 60 : 0 }}>
+        <div style={S.logoutItem} onClick={() => { setMenuOpen(false); setShowLogout(true) }}>
+          <span>⏻</span> ログアウト
+        </div>
+      </div>
+    </aside>
+  )
+
+  // ── モバイル用フッター（常にレンダリング、CSSで表示制御） ──
+  const mobileFooter = (
+    <nav style={M.bottomBar} className="sidebar-mobile">
+      {NAV.map(n => (
+        <Link
+          key={n.id}
+          href={n.href}
+          prefetch={true}
+          style={{ ...M.tab, color: active === n.id ? 'var(--acc)' : 'var(--t3)', textDecoration: 'none' }}
+        >
+          <span style={M.tabIcon}>{n.icon}</span>
+          <span style={M.tabLabel}>{n.label}</span>
+        </Link>
+      ))}
+      <button
+        style={{ ...M.tab, color: 'var(--t3)' }}
+        onClick={() => setShowLogout(true)}
+      >
+        <span style={M.tabIcon}>⏻</span>
+        <span style={M.tabLabel}>その他</span>
+      </button>
+    </nav>
+  )
+
+  // ── CSS-only レスポンシブ: 常に両方レンダリングし、CSSで切り替え ──
   return (
     <>
-      <aside style={S.sidebar}>
-        <div style={S.logo}>
-          KINTAI
-          <span style={S.logoSub}>勤怠管理システム</span>
-        </div>
-
-        <nav style={S.nav}>
-          {NAV.map(n => (
-            <div
-              key={n.id}
-              style={{ ...S.item, ...(active === n.id ? S.itemActive : {}) }}
-              onClick={() => router.push(n.id === 'stamp' ? '/stamp' : `/employee/${n.id}`)}
-            >
-              <span style={S.icon}>{n.icon}</span>
-              <span style={{ flex: 1 }}>{n.label}</span>
-            </div>
-          ))}
-        </nav>
-
-        <div style={S.userBtn} onClick={() => setMenuOpen(o => !o)}>
-          <div style={S.avatar}>{user?.av ?? '?'}</div>
-          <div style={{ flex: 1 }}>
-            <div style={S.userName}>{user?.name}</div>
-            <div style={S.userRole}>{user?.role}</div>
-          </div>
-          <span style={{ fontSize: 9, color: 'var(--t3)', transform: menuOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▲</span>
-        </div>
-
-        <div style={{ ...S.logoutMenu, maxHeight: menuOpen ? 60 : 0 }}>
-          <div style={S.logoutItem} onClick={() => { setMenuOpen(false); setShowLogout(true) }}>
-            <span>⏻</span> ログアウト
-          </div>
-        </div>
-      </aside>
+      {desktopSidebar}
+      {mobileFooter}
       {logoutModal}
     </>
   )
@@ -181,6 +159,12 @@ const M: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     gap: 2, padding: '4px 0', minWidth: 56, cursor: 'pointer',
     WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    border: 'none',
+    background: 'none',
+    font: 'inherit',
   },
   tabIcon: { fontSize: 20, lineHeight: 1 },
   tabLabel: { fontSize: 9, fontWeight: 500 },
@@ -204,7 +188,7 @@ const S: Record<string, React.CSSProperties> = {
   item: {
     display: 'flex', alignItems: 'center', gap: 10,
     padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
-    marginBottom: 2, fontSize: 13, color: 'var(--t2)', transition: 'all .15s',
+    marginBottom: 2, fontSize: 13, color: 'var(--t2)', transition: 'background .15s, color .15s',
   },
   itemActive: { background: 'rgba(56,189,248,.1)', color: 'var(--acc)' },
   icon: { fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0 },
