@@ -60,8 +60,11 @@ export default function RequestsPage() {
 
   useEffect(() => { loadHistory() }, [])
 
-  const showToastMsg = (msg: string) => {
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+
+  const showToastMsg = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast(msg)
+    setToastType(type)
     setTimeout(() => setToast(''), 2800)
   }
 
@@ -133,21 +136,34 @@ export default function RequestsPage() {
             </div>
 
             <button style={{ ...S.submitBtn, opacity: submitting ? 0.7 : 1 }} disabled={submitting} onClick={async () => {
+              // --- バリデーション ---
+              const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d).getTime())
+              if (!isValidDate(startDate)) {
+                showToastMsg('開始日が正しくありません', 'error'); return
+              }
+              const isHalf = selected === 1 || selected === 2
+              if (!isHalf && !isValidDate(endDate)) {
+                showToastMsg('終了日が正しくありません', 'error'); return
+              }
+              if (!isHalf && endDate < startDate) {
+                showToastMsg('終了日は開始日以降を指定してください', 'error'); return
+              }
+              // ---------------------
               setSubmitting(true)
               try {
                 await apiPost('/api/requests', {
                   type: ['vacation', 'half-am', 'half-pm', 'special'][selected],
                   startDate,
-                  endDate,
+                  endDate: isHalf ? startDate : endDate,
                   reason,
                 })
-                showToastMsg('有給申請を送信しました。上長の承認をお待ちください')
+                showToastMsg('有給申請を送信しました。上長の承認をお待ちください', 'success')
                 loadHistory()
                 // refresh paid leave balance
                 apiGet('/api/auth/me').then(d => setPaidLeave(d.user.paidLeaveBalance ?? 0)).catch(() => {})
                 setReason('')
               } catch (e: unknown) {
-                showToastMsg(e instanceof Error ? e.message : '申請に失敗しました')
+                showToastMsg(e instanceof Error ? e.message : '申請に失敗しました', 'error')
               } finally {
                 setSubmitting(false)
               }
@@ -185,7 +201,7 @@ export default function RequestsPage() {
         </div>
       </main>
 
-      {toast && <div style={S.toast}>✅ {toast}</div>}
+      {toast && <div style={{ ...S.toast, borderColor: toastType === 'error' ? '#f87171' : 'var(--b2)' }}>{toastType === 'error' ? '❌' : '✅'} {toast}</div>}
     </div>
   )
 }

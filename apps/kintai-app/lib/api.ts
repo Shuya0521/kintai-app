@@ -5,11 +5,19 @@ export async function api(path: string, options?: RequestInit) {
   const timeout = setTimeout(() => controller.abort(), 10000)
   try {
     const res = await fetch(path, {
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...options?.headers },
       ...options,
       signal: controller.signal,
     })
     const data = await res.json()
+    if (res.status === 401) {
+      // セッション切れ → ログイン画面へ
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+      throw new Error('セッションが切れました。再ログインしてください。')
+    }
     if (!res.ok) throw new Error(data.error || 'エラーが発生しました')
     return data
   } catch (e) {

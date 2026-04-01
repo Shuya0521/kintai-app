@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@kintai/shared'
+import { verifyToken, createAccessToken } from '@kintai/shared'
 
 /**
  * 社員用アプリ — 認証ミドルウェア
  *
  * 公開ルート以外はJWT認証を強制。
- * 未認証の場合は /login にリダイレクト。
+ * トークン失効時はCookieが有効であれば自動リフレッシュ。
+ * 完全に無効な場合は /login にリダイレクト。
  */
 
 const PUBLIC_PATHS = [
@@ -36,20 +37,38 @@ export function middleware(req: NextRequest) {
   // JWT検証
   const token = req.cookies.get('kintai_token')?.value
   if (!token) {
-    // APIリクエストの場合は401を返す
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+      return NextResponse.json({ error: '認証が必要です', code: 'NO_TOKEN' }, { status: 401 })
     }
-    // ページリクエストはログインにリダイレクト
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
   const payload = verifyToken(token)
   if (!payload) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'トークンが無効です' }, { status: 401 })
+    // トークンが失効している場合、ペイロードをデコードして自動リフレッシュを試みる
+    try {
+      const [, rawPayload] = token.split('.')
+      const decoded = JSON.parse(Buffer.from(rawPayload, 'base64url').toString())
+      if (decoded?.userId && decoded?.type === 'access') {
+        // ユーザーIDが取得できればトークンを再発行してリクエストを続行
+        const newToken = createAccessToken(decoded.userId, decoded.role)
+        const response = NextResponse.next()
+        response.cookies.set('kintai_token', newToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/',
+        })
+        return response
+      }
+    } catch {
+      // デコード失敗 → 無効なトークン
     }
-    // トークン無効 → ログインへ
+
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'セッションが切れました。再ログインしてください。', code: 'TOKEN_EXPIRED' }, { status: 401 })
+    }
     const response = NextResponse.redirect(new URL('/login', req.url))
     response.cookies.delete('kintai_token')
     return response
