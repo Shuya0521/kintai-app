@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
 import AdminSidebar from '@/components/AdminSidebar'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 interface Dept { id: string; name: string; count: number }
-interface Holiday { id: string; date: string; name: string }
+interface Holiday { date: string; name: string; year: number }
 
 const INITIAL_DEPTS: Dept[] = [
   { id: '1', name: '営業部', count: 12 },
@@ -15,42 +14,53 @@ const INITIAL_DEPTS: Dept[] = [
   { id: '4', name: '管理部', count: 5 },
 ]
 
-const INITIAL_HOLIDAYS: Holiday[] = [
-  { id: '1', date: '2026-01-01', name: '元日' },
-  { id: '2', date: '2026-01-12', name: '成人の日' },
-  { id: '3', date: '2026-02-11', name: '建国記念の日' },
-  { id: '4', date: '2026-02-23', name: '天皇誕生日' },
-  { id: '5', date: '2026-03-20', name: '春分の日' },
-  { id: '6', date: '2026-04-29', name: '昭和の日' },
-  { id: '7', date: '2026-05-03', name: '憲法記念日' },
-  { id: '8', date: '2026-05-04', name: 'みどりの日' },
-  { id: '9', date: '2026-05-05', name: 'こどもの日' },
-  { id: '10', date: '2026-07-20', name: '海の日' },
-  { id: '11', date: '2026-08-11', name: '山の日' },
-  { id: '12', date: '2026-09-21', name: '敬老の日' },
-  { id: '13', date: '2026-09-23', name: '秋分の日' },
-  { id: '14', date: '2026-10-12', name: 'スポーツの日' },
-  { id: '15', date: '2026-11-03', name: '文化の日' },
-  { id: '16', date: '2026-11-23', name: '勤労感謝の日' },
-]
-
 const card = { background: 'var(--s1)', borderRadius: 12, padding: 20, border: '1px solid var(--b)' }
-const btn = (bg: string, color: string) => ({
-  padding: '6px 14px', borderRadius: 6, border: 'none', background: bg, color, cursor: 'pointer', fontSize: 13,
+const btn = (bg: string, color: string, disabled = false) => ({
+  padding: '6px 14px', borderRadius: 6, border: 'none', background: disabled ? 'var(--s2)' : bg,
+  color: disabled ? 'var(--t3)' : color, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 13,
+  opacity: disabled ? 0.6 : 1,
 })
 
 export default function MasterPage() {
-  const router = useRouter()
   const { user, loading } = useCurrentUser()
   const [tab, setTab] = useState<'dept' | 'holiday'>('dept')
+
+  // 部署
   const [depts, setDepts] = useState<Dept[]>(INITIAL_DEPTS)
-  const [holidays, setHolidays] = useState<Holiday[]>(INITIAL_HOLIDAYS)
   const [deptInput, setDeptInput] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+
+  // 祝日
+  const [holidays, setHolidays] = useState<Holiday[]>([])
   const [holDate, setHolDate] = useState('')
   const [holName, setHolName] = useState('')
-  const [year, setYear] = useState(2026)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [holLoading, setHolLoading] = useState(false)
+  const [fetching, setFetching] = useState(false)
+  const [toast, setToast] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast(msg); setToastType(type)
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  // 祝日をDBから読み込む
+  const loadHolidays = useCallback(async (y: number) => {
+    setHolLoading(true)
+    try {
+      const res = await fetch(`/api/holidays?year=${y}`, { credentials: 'include' })
+      const data = await res.json()
+      setHolidays(data.holidays || [])
+    } catch {
+      showToast('祝日の読み込みに失敗しました', 'error')
+    } finally {
+      setHolLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { if (tab === 'holiday') loadHolidays(year) }, [tab, year, loadHolidays])
 
   if (loading || !user) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -58,25 +68,66 @@ export default function MasterPage() {
     </div>
   )
 
+  // ── 部署操作 ──
   const addDept = () => {
     if (!deptInput.trim()) return
     setDepts(p => [...p, { id: Date.now().toString(), name: deptInput.trim(), count: 0 }])
     setDeptInput('')
   }
-
   const saveDept = (id: string) => {
     if (!editName.trim()) return
     setDepts(p => p.map(d => d.id === id ? { ...d, name: editName.trim() } : d))
     setEditId(null)
   }
 
-  const addHoliday = () => {
+  // ── 祝日操作 ──
+  const addHoliday = async () => {
     if (!holDate || !holName.trim()) return
-    setHolidays(p => [...p, { id: Date.now().toString(), date: holDate, name: holName.trim() }].sort((a, b) => a.date.localeCompare(b.date)))
-    setHolDate(''); setHolName('')
+    try {
+      const res = await fetch('/api/holidays', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: holDate, name: holName.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      setHolDate(''); setHolName('')
+      await loadHolidays(year)
+      showToast('祝日を追加しました')
+    } catch {
+      showToast('追加に失敗しました', 'error')
+    }
   }
 
-  const filtered = holidays.filter(h => h.date.startsWith(String(year)))
+  const deleteHoliday = async (date: string) => {
+    try {
+      await fetch(`/api/holidays?date=${date}`, { method: 'DELETE', credentials: 'include' })
+      setHolidays(p => p.filter(h => h.date !== date))
+      showToast('削除しました')
+    } catch {
+      showToast('削除に失敗しました', 'error')
+    }
+  }
+
+  // ── 祝日自動取得（サーバー経由で内閣府APIを叩く） ──
+  const fetchJapaneseHolidays = async () => {
+    setFetching(true)
+    try {
+      const res = await fetch(`/api/holidays?year=${year}`, {
+        method: 'PUT', credentials: 'include',
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || '自動取得に失敗しました')
+      }
+      const data = await res.json()
+      setHolidays(data.holidays || [])
+      showToast(`${year}年の祝日 ${data.count}件 を自動取得・登録しました ✨`)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '自動取得に失敗しました', 'error')
+    } finally {
+      setFetching(false)
+    }
+  }
 
   const tabStyle = (active: boolean) => ({
     padding: '8px 20px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600,
@@ -94,6 +145,7 @@ export default function MasterPage() {
           <button style={tabStyle(tab === 'holiday')} onClick={() => setTab('holiday')}>祝日管理</button>
         </div>
 
+        {/* ── 部署管理タブ ── */}
         {tab === 'dept' && (
           <div style={card}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -129,36 +181,82 @@ export default function MasterPage() {
           </div>
         )}
 
+        {/* ── 祝日管理タブ ── */}
         {tab === 'holiday' && (
           <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span style={{ fontSize: 13, color: 'var(--t2)' }}>年:</span>
-              <select value={year} onChange={e => setYear(Number(e.target.value))}
-                style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }}>
-                {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-              <input type="date" value={holDate} onChange={e => setHolDate(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }} />
-              <input value={holName} onChange={e => setHolName(e.target.value)} placeholder="祝日名"
-                onKeyDown={e => e.key === 'Enter' && addHoliday()}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }} />
-              <button style={btn('var(--acc)', '#fff')} onClick={addHoliday}>追加</button>
-            </div>
-            {filtered.length === 0 && <div style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: 20 }}>{year}年の祝日はありません</div>}
-            {filtered.map(h => (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--b)' }}>
-                <div>
-                  <span style={{ fontSize: 13, color: 'var(--t2)', marginRight: 12, fontFamily: 'monospace' }}>{h.date}</span>
-                  <span style={{ fontSize: 14 }}>{h.name}</span>
-                </div>
-                <button style={btn('var(--s2)', 'var(--red)')} onClick={() => setHolidays(p => p.filter(x => x.id !== h.id))}>削除</button>
+            {/* ヘッダー行: 年選択 + 自動取得ボタン */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--t2)' }}>年:</span>
+                <select value={year} onChange={e => setYear(Number(e.target.value))}
+                  style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }}>
+                  {[2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
               </div>
-            ))}
+
+              {/* 自動取得ボタン */}
+              <button
+                style={{ ...btn('#7c3aed', '#fff', fetching), display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={fetchJapaneseHolidays}
+                disabled={fetching}
+              >
+                {fetching ? '⏳ 取得中...' : `🗓️ ${year}年 祝日を自動取得`}
+              </button>
+
+              <span style={{ fontSize: 11, color: 'var(--t3)' }}>※ 内閣府公式データを自動登録</span>
+            </div>
+
+            {/* 会社独自休日 手動追加フォーム */}
+            <div style={{ background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.2)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--acc)', fontWeight: 600, marginBottom: 8 }}>🏢 会社独自の休日を追加</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input type="date" value={holDate} onChange={e => setHolDate(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }} />
+                <input value={holName} onChange={e => setHolName(e.target.value)} placeholder="例: 創業記念日・夏季休暇"
+                  onKeyDown={e => e.key === 'Enter' && addHoliday()}
+                  style={{ flex: 1, minWidth: 160, padding: '8px 12px', borderRadius: 6, border: '1px solid var(--b)', background: 'var(--s2)', color: 'var(--text)', fontSize: 16 }} />
+                <button style={btn('var(--acc)', '#fff')} onClick={addHoliday}>追加</button>
+              </div>
+            </div>
+
+            {/* 祝日一覧 */}
+            {holLoading ? (
+              <div style={{ textAlign: 'center', padding: 24, color: 'var(--t2)', fontSize: 13 }}>読み込み中...</div>
+            ) : holidays.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 24, color: 'var(--t2)', fontSize: 13 }}>
+                {year}年の祝日が未登録です。「祝日を自動取得」ボタンを押してください。
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 8 }}>
+                  {year}年 — 合計 {holidays.length}日
+                </div>
+                {holidays.map(h => (
+                  <div key={h.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--b)' }}>
+                    <div>
+                      <span style={{ fontSize: 13, color: 'var(--t2)', marginRight: 12, fontFamily: 'monospace' }}>{h.date}</span>
+                      <span style={{ fontSize: 14 }}>{h.name}</span>
+                    </div>
+                    <button style={btn('var(--s2)', 'var(--red)')} onClick={() => deleteHoliday(h.date)}>削除</button>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </main>
+
+      {/* トースト通知 */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--s2)', border: `1px solid ${toastType === 'error' ? '#f87171' : 'var(--b2)'}`,
+          borderRadius: 12, padding: '12px 20px', fontSize: 13, whiteSpace: 'nowrap',
+          boxShadow: '0 8px 32px rgba(0,0,0,.5)', zIndex: 999,
+        }}>
+          {toastType === 'error' ? '❌' : '✅'} {toast}
+        </div>
+      )}
     </div>
   )
 }
