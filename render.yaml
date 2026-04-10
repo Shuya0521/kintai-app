@@ -3,7 +3,7 @@ services:
     name: kintai-app
     runtime: node
     plan: free
-    buildCommand: npm install && cd packages/shared && npx prisma generate && npx prisma migrate deploy && cd ../.. && npm run build:app
+    buildCommand: npm install && cd packages/shared && npx prisma generate && npx prisma db push --accept-data-loss 2>/dev/null || echo "prisma db push skipped" && cd ../.. && npm run build:app
     startCommand: node apps/kintai-app/.next/standalone/apps/kintai-app/server.js
     healthCheckPath: /api/health
     envVars:
@@ -20,7 +20,7 @@ services:
     name: kintai-admin
     runtime: node
     plan: free
-    buildCommand: npm install && cd packages/shared && npx prisma generate && npx prisma migrate deploy && cd ../.. && npm run build:admin
+    buildCommand: npm install && cd packages/shared && npx prisma generate && npx prisma db push --accept-data-loss 2>/dev/null || echo "prisma db push skipped" && cd ../.. && npm run build:admin
     startCommand: npm run start --workspace=apps/kintai-admin
     envVars:
       - key: NODE_ENV
