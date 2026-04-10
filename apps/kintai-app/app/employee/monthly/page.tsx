@@ -69,7 +69,15 @@ export default function MonthlyPage() {
     : `${summary.totalWorkHours || 0}h`
   const pct = Math.min(100, ot / 60 * 100)
   const gaugeColor = ot >= 60 ? 'var(--red)' : ot >= 45 ? 'var(--orange)' : ot >= 36 ? 'var(--amber)' : 'var(--green)'
-  const days = (records || []).map(r => r.workMin ? r.workMin / 60 : 0)
+  // 月の全日分のバーデータを生成（1日〜末日）
+  const now = new Date()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const dateStr = `${monthStr}-${String(i + 1).padStart(2, '0')}`
+    const rec = (records || []).find((r: { date: string; workMin: number }) => r.date === dateStr)
+    return rec ? rec.workMin / 60 : 0
+  })
 
   return (
     <div style={S.app}>
