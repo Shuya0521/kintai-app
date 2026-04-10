@@ -6,7 +6,7 @@ export async function POST() {
   cookieStore.set('kintai_token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict', // #3: login と統一
     maxAge: 0,
     path: '/',
   })

@@ -61,7 +61,8 @@ export async function POST(req: NextRequest) {
       where: {
         user: userWhere,
         status: 'approved',
-        startDate: { startsWith: monthStr },
+        startDate: { lte: `${monthStr}-31` },
+        endDate: { gte: `${monthStr}-01` },
       },
     }),
   ])

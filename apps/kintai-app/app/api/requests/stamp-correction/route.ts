@@ -29,11 +29,17 @@ export async function POST(req: NextRequest) {
     let approverId: string | null = null
 
     if (approverRoles.length > 0) {
+      // #9: 同部署→全社のフォールバック（有給申請と統一）
       const approver = await prisma.user.findFirst({
         where: {
           role: { in: approverRoles },
           status: 'active',
           department: me.department,
+        },
+      }) || await prisma.user.findFirst({
+        where: {
+          role: { in: approverRoles },
+          status: 'active',
         },
       })
       approverId = approver?.id || null
@@ -126,6 +132,7 @@ export async function GET() {
   const me = await getCurrentUser()
   if (!me) return jsonError('認証が必要です', 401)
 
+  try {
   const corrections = await prisma.stampCorrection.findMany({
     where: {
       attendance: { userId: me.id },
@@ -138,4 +145,8 @@ export async function GET() {
   })
 
   return jsonOk({ corrections })
+  } catch (error) {
+    console.error('GET stamp-corrections error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }

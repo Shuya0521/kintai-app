@@ -225,6 +225,7 @@ export default function StampCorrectionPage() {
                 const statusMap: Record<string, { text: string; color: string }> = {
                   pending: { text: '承認待ち', color: '#fbbf24' },
                   applied: { text: '承認済み', color: '#34d399' },
+                  approved: { text: '承認済み', color: '#34d399' }, // #13: approved も対応
                   rejected: { text: '却下', color: '#f87171' },
                 }
                 const st = statusMap[h.status] || { text: h.status, color: 'var(--t2)' }

@@ -116,8 +116,9 @@ export async function checkMonthlyOvertime(
     monthlyHours,
     warningLevel,
     alerts,
-    isViolation: warningLevel === 'violation' || warningLevel === 'critical' ||
-      alerts.some(a => a.level === 'violation' || a.level === 'critical'),
+    // #17: critical(80h)は産業医面談対象であり法令違反ではない
+    isViolation: warningLevel === 'violation' ||
+      alerts.some(a => a.level === 'violation'),
   }
 }
 

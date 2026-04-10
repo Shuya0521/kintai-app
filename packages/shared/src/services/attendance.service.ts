@@ -9,17 +9,23 @@ import {
   STANDARD_WORK_MIN,
   LEGAL_BREAK_MIN_45,
   LEGAL_BREAK_MIN_60,
-  LEGAL_BREAK_THRESHOLD_6H,
-  LEGAL_BREAK_THRESHOLD_8H,
 } from '../constants'
 
-/** 始業時刻（09:00） */
-const BUSINESS_START_HOUR = 9
+/** 始業時刻（JST 09:00） */
+const BUSINESS_START_HOUR_JST = 9
 const BUSINESS_START_MIN = 0
 
-/** 終業時刻（18:00） */
-const BUSINESS_END_HOUR = 18
+/** 終業時刻（JST 18:00） */
+const BUSINESS_END_HOUR_JST = 18
 const BUSINESS_END_MIN = 0
+
+/** JST時刻を取得するヘルパー */
+function getJSTHours(d: Date): number {
+  return (d.getUTCHours() + 9) % 24
+}
+function getJSTMinutes(d: Date): number {
+  return d.getUTCMinutes()
+}
 
 export interface AttendanceCalcInput {
   checkInTime: Date | null
@@ -48,8 +54,11 @@ export function recalculateAttendanceMinutes(input: AttendanceCalcInput): Attend
   // 総拘束時間（分）
   const totalMin = Math.max(0, Math.floor((checkOutTime.getTime() - checkInTime.getTime()) / 60000))
 
-  // 法定休憩チェック（不足分があれば自動調整はしないが、計算に含める）
-  const effectiveBreak = breakTotalMin
+  // #10: 法定休憩の最低時間を保証（入力値と法定値の大きい方を採用）
+  const legalMinBreak = totalMin > 8 * 60 ? LEGAL_BREAK_MIN_60
+                       : totalMin > 6 * 60 ? LEGAL_BREAK_MIN_45
+                       : 0
+  const effectiveBreak = Math.max(breakTotalMin, legalMinBreak)
 
   // 実労働時間（分）
   const workMin = Math.max(0, totalMin - effectiveBreak)
@@ -57,23 +66,27 @@ export function recalculateAttendanceMinutes(input: AttendanceCalcInput): Attend
   // 残業時間（所定労働時間超過分）
   const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
 
-  // 遅刻（始業時刻以降の出勤）
+  // #7: 遅刻（JST基準で始業時刻以降の出勤）
   let lateMin = 0
   if (!isHolidayWork) {
-    const businessStart = new Date(checkInTime)
-    businessStart.setHours(BUSINESS_START_HOUR, BUSINESS_START_MIN, 0, 0)
-    if (checkInTime > businessStart) {
-      lateMin = Math.floor((checkInTime.getTime() - businessStart.getTime()) / 60000)
+    const inHour = getJSTHours(checkInTime)
+    const inMin = getJSTMinutes(checkInTime)
+    const inTotalMin = inHour * 60 + inMin
+    const startTotalMin = BUSINESS_START_HOUR_JST * 60 + BUSINESS_START_MIN
+    if (inTotalMin > startTotalMin) {
+      lateMin = inTotalMin - startTotalMin
     }
   }
 
-  // 早退（終業時刻以前の退勤）
+  // #7: 早退（JST基準で終業時刻以前の退勤）
   let earlyLeaveMin = 0
   if (!isHolidayWork) {
-    const businessEnd = new Date(checkOutTime)
-    businessEnd.setHours(BUSINESS_END_HOUR, BUSINESS_END_MIN, 0, 0)
-    if (checkOutTime < businessEnd) {
-      earlyLeaveMin = Math.floor((businessEnd.getTime() - checkOutTime.getTime()) / 60000)
+    const outHour = getJSTHours(checkOutTime)
+    const outMin = getJSTMinutes(checkOutTime)
+    const outTotalMin = outHour * 60 + outMin
+    const endTotalMin = BUSINESS_END_HOUR_JST * 60 + BUSINESS_END_MIN
+    if (outTotalMin < endTotalMin) {
+      earlyLeaveMin = endTotalMin - outTotalMin
     }
   }
 

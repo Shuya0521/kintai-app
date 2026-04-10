@@ -29,10 +29,12 @@ export function createRefreshToken(userId: string, role?: string): string {
   })
 }
 
-/** トークン検証 */
-export function verifyToken(token: string): TokenPayload | null {
+/** トークン検証（typeチェック付き） */
+export function verifyToken(token: string, expectedType: 'access' | 'refresh' = 'access'): TokenPayload | null {
   try {
-    return jwt.verify(token, getJwtSecret()) as TokenPayload
+    const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
+    if (payload.type !== expectedType) return null // #2: refresh tokenの不正利用防止
+    return payload
   } catch {
     return null
   }

@@ -1,18 +1,21 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
-import { prisma, verifyPassword, createToken, isAdminRole, jsonOk, jsonError, checkLockout, calculateLockout } from '@kintai/shared'
+import { prisma, verifyPassword, createToken, isAdminRole, jsonOk, jsonError, checkLockout, calculateLockout, loginSchema } from '@kintai/shared'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
-    if (!email || !password) return jsonError('メールアドレスとパスワードを入力してください', 400)
+    // #18: zodバリデーション適用
+    const parsed = loginSchema.safeParse(await req.json())
+    if (!parsed.success) return jsonError('メールアドレスとパスワードを入力してください', 400)
+    const { email, password } = parsed.data
 
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) return jsonError('メールアドレスまたはパスワードが正しくありません', 401)
 
     // 管理者ロールチェック
+    // #22: ロール不一致でも汎用エラーを返す（ユーザー列挙防止）
     if (!isAdminRole(user.role)) {
-      return jsonError('管理者権限がありません', 403)
+      return jsonError('メールアドレスまたはパスワードが正しくありません', 401)
     }
 
     if (user.status !== 'active') return jsonError('このアカウントは無効化されています', 403)

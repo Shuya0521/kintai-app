@@ -98,6 +98,8 @@ export async function DELETE(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
   if (!date) return jsonError('date パラメータが必要です', 400)
 
-  await prisma.holiday.delete({ where: { date } }).catch(() => {})
+  // #20: 存在しない祝日削除時はエラーを返す
+  const deleted = await prisma.holiday.delete({ where: { date } }).catch(() => null)
+  if (!deleted) return jsonError('指定した祝日が見つかりません', 404)
   return jsonOk({ deleted: date })
 }

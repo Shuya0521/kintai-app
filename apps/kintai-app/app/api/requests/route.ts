@@ -160,15 +160,19 @@ export async function GET() {
   const me = await getCurrentUser()
   if (!me) return jsonError('認証が必要です', 401)
 
-  const requests = await prisma.leaveRequest.findMany({
-    where: { userId: me.id },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      approval: {
-        select: { id: true, status: true, comment: true, approverId: true, processedAt: true },
+  try {
+    const requests = await prisma.leaveRequest.findMany({
+      where: { userId: me.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        approval: {
+          select: { id: true, status: true, comment: true, approverId: true, processedAt: true },
+        },
       },
-    },
-  })
-
-  return jsonOk({ requests })
+    })
+    return jsonOk({ requests })
+  } catch (error) {
+    console.error('GET requests error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }

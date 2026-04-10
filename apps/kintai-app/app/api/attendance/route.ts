@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, jsonOk, jsonError } from '@/lib/auth'
-import { STANDARD_WORK_MIN, DEEMED_BREAK_MIN, getTodayStr } from '@kintai/shared'
+import { STANDARD_WORK_MIN, LEGAL_BREAK_MIN_45, LEGAL_BREAK_MIN_60, getTodayStr } from '@kintai/shared'
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser()
@@ -42,9 +42,12 @@ export async function POST(req: NextRequest) {
       if (record.checkOutTime) return jsonError('既に退勤済みです', 400)
 
       const inTime = record.checkInTime!.getTime()
-      const breakMin = DEEMED_BREAK_MIN // みなし休憩60分固定
-      // Bug #5: 負の workMin を防ぐ
-      const workMin = Math.max(0, Math.floor((now.getTime() - inTime) / 60000) - breakMin)
+      // #5: 法定休憩控除（6h超→45分、8h超→60分、6h以下→0分）
+      const elapsed = Math.floor((now.getTime() - inTime) / 60000)
+      const breakMin = elapsed > 8 * 60 ? LEGAL_BREAK_MIN_60
+                     : elapsed > 6 * 60 ? LEGAL_BREAK_MIN_45
+                     : 0
+      const workMin = Math.max(0, elapsed - breakMin)
       const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
       // Bug #5: attendance.date から year/month を取得（UTCズレ防止）
       const [year, month] = record!.date.split('-').slice(0, 2).map(Number)

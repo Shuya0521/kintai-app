@@ -48,6 +48,9 @@ export default function OvertimePage() {
         .map((m: OvertimeRecord) => ({ id: m.id, name: m.name, dept: m.dept, overtimeMin: m.overtimeMin }))
         .sort((a: OvertimeRecord, b: OvertimeRecord) => b.overtimeMin - a.overtimeMin)
       setRecords(members)
+    }).catch(() => {
+      // #12: fetchエラー時もローディング解除
+    }).finally(() => {
       setLoading(false)
     })
   }, [month])

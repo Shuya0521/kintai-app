@@ -102,7 +102,7 @@ export const MAX_SESSIONS_PER_USER = 3
 // 付与日: 基準日の翌日（7/1 または 1/1）
 export const PAID_LEAVE_GRANT_TABLE = [
   { label: '入社時', years: 0,   days: 2 },
-  { label: '６ヶ月', years: 0.5, days: 8 },
+  { label: '６ヶ月', years: 0.5, days: 10 }, // #4: 労基法39条 法定最低10日
   { label: '1年',   years: 1,   days: 11 },
   { label: '2年',   years: 2,   days: 12 },
   { label: '3年',   years: 3,   days: 14 },

@@ -224,14 +224,19 @@ async function escalateOverdueApprovals(): Promise<number> {
 
     // 上位ロールの承認者を検索
     const upperRoles = ROLE_HIERARCHY.slice(currentRoleIdx + 1) as unknown as string[]
-    const upperApprover = await prisma.user.findFirst({
+    // #16: 全候補取得 → ROLE_HIERARCHYの順序でソートして最も近い上位を選択
+    const upperCandidates = await prisma.user.findMany({
       where: {
         department: approval.approver.department,
         role: { in: upperRoles },
         status: 'active',
       },
-      orderBy: { role: 'asc' }, // 最も近い上位から
     })
+    upperCandidates.sort((a, b) =>
+      ROLE_HIERARCHY.indexOf(a.role as typeof ROLE_HIERARCHY[number]) -
+      ROLE_HIERARCHY.indexOf(b.role as typeof ROLE_HIERARCHY[number])
+    )
+    const upperApprover = upperCandidates[0] || null
 
     if (upperApprover) {
       await prisma.approval.update({

@@ -24,9 +24,12 @@ export function useCurrentUser(): UseCurrentUserResult {
 
   useEffect(() => {
     fetch('/api/auth/me')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error() // #15: HTTPステータスチェック
+        return r.json()
+      })
       .then(d => {
-        if (d.error) {
+        if (d.error || !d.user) {
           router.push('/login')
           return
         }

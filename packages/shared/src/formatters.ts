@@ -16,25 +16,30 @@ export function formatMinToHumanReadable(min: number): string {
   return `${h}h ${m}m`
 }
 
-/** ISO日時文字列を "HH:MM" にフォーマット */
+/** ISO日時文字列を "HH:MM" にフォーマット（JST表示） */
 export function formatTimeFromISO(isoString: string | null): string {
   if (!isoString) return '--'
   const d = new Date(isoString)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  // #6: UTC→JSTに変換して表示
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000)
+  return `${String(jst.getUTCHours()).padStart(2, '0')}:${String(jst.getUTCMinutes()).padStart(2, '0')}`
 }
 
 /** YYYY-MM-DD を "M月D日(曜日)" にフォーマット */
 export function formatDateJP(dateStr: string): string {
-  const d = new Date(dateStr)
+  // #6: YYYY-MM-DD をローカル時刻としてパース（UTCズレ防止）
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, mo - 1, d)
   const days = ['日', '月', '火', '水', '木', '金', '土']
-  return `${d.getMonth() + 1}月${d.getDate()}日(${days[d.getDay()]})`
+  return `${mo}月${d}日(${days[date.getDay()]})`
 }
 
 /** YYYY-MM-DD を "YYYY年M月D日(曜日)" にフォーマット */
 export function formatDateFullJP(dateStr: string): string {
-  const d = new Date(dateStr)
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, mo - 1, d)
   const days = ['日', '月', '火', '水', '木', '金', '土']
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${days[d.getDay()]})`
+  return `${y}年${mo}月${d}日(${days[date.getDay()]})`
 }
 
 /** YYYY-MM-DD 形式で今日の日付を返す（日本時間 JST = UTC+9） */

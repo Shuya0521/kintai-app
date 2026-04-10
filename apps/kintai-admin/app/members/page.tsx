@@ -42,23 +42,29 @@ export default function MembersPage() {
   useEffect(() => { loadMembers() }, [loadMembers])
 
   const handleApprove = async (id: string) => {
-    await fetch('/api/users/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: id }),
-    })
-    loadMembers()
+    try {
+      const res = await fetch('/api/users/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || '承認に失敗しました'); return }
+      loadMembers()
+    } catch { alert('通信エラーが発生しました') }
   }
 
   const handleEditSave = async () => {
     if (!editing) return
-    await fetch('/api/users', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: editing.id, department: editing.department, role: editing.role }),
-    })
-    setEditing(null)
-    loadMembers()
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: editing.id, department: editing.department, role: editing.role }),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || '更新に失敗しました'); return }
+      setEditing(null)
+      loadMembers()
+    } catch { alert('通信エラーが発生しました') }
   }
 
   if (!user) return null

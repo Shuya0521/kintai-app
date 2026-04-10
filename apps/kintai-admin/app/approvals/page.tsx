@@ -26,8 +26,13 @@ export default function ApprovalsPage() {
   const [processing, setProcessing] = useState<string | null>(null)
 
   const loadApprovals = () => {
-    fetch('/api/approvals').then(r => r.json()).then(d => {
+    fetch('/api/approvals').then(r => {
+      if (!r.ok) throw new Error()
+      return r.json()
+    }).then(d => {
       setApprovals(d.approvals || [])
+    }).catch(() => {
+      // #14: エラー時はデフォルト空配列のまま
     })
   }
 
