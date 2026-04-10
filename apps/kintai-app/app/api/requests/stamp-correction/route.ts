@@ -11,7 +11,9 @@ export async function POST(req: NextRequest) {
   try {
     const { date, checkInTime, checkOutTime, breakTotalMin, workPlace, note, reason } = await req.json()
     if (!date || !reason) return jsonError('日付と修正理由を入力してください', 400)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(new Date(date).getTime())) return jsonError('日付はYYYY-MM-DD形式の有効な日付を入力してください', 400)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jsonError('日付はYYYY-MM-DD形式で入力してください', 400)
+    { const [dy, dm, dd] = date.split('-').map(Number); const dObj = new Date(dy, dm - 1, dd)
+      if (dObj.getFullYear() !== dy || dObj.getMonth() + 1 !== dm || dObj.getDate() !== dd) return jsonError('無効な日付です', 400) }
     if (workPlace && !(WORK_PLACES as readonly string[]).includes(workPlace)) {
       return jsonError('無効な勤務場所です', 400)
     }

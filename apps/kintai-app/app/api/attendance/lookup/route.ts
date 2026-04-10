@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
 
   const date = req.nextUrl.searchParams.get('date')
   if (!date) return jsonError('日付を指定してください', 400)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(new Date(date).getTime())) return jsonError('日付はYYYY-MM-DD形式の有効な日付を指定してください', 400)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jsonError('日付はYYYY-MM-DD形式で指定してください', 400)
+  { const [dy, dm, dd] = date.split('-').map(Number); const dObj = new Date(dy, dm - 1, dd)
+    if (dObj.getFullYear() !== dy || dObj.getMonth() + 1 !== dm || dObj.getDate() !== dd) return jsonError('無効な日付です', 400) }
 
   const attendance = await prisma.attendance.findUnique({
     where: { userId_date: { userId: me.id, date } },

@@ -11,7 +11,7 @@ import {
 // Import route handlers after setup.ts mocks next/headers
 const { GET, POST } = await import('@/app/api/approvals/route')
 
-/** 承認用のLeaveRequest + Approvalを作成するヘルパー */
+/** 承認用のLeaveRequest + Approval + PaidLeaveGrantを作成するヘルパー */
 async function createLeaveWithApproval(opts: {
   employeeId: string
   adminId: string
@@ -19,13 +19,28 @@ async function createLeaveWithApproval(opts: {
   days?: number
 }) {
   const { employeeId, adminId, leaveType, days } = opts
+  // deductPaidLeaveFIFO に必要な PaidLeaveGrant レコード
+  const existingGrant = await prisma.paidLeaveGrant.findFirst({ where: { userId: employeeId } })
+  if (!existingGrant) {
+    await prisma.paidLeaveGrant.create({
+      data: {
+        userId: employeeId,
+        grantDate: new Date('2026-01-01'),
+        grantedDays: 20,
+        usedDays: 0,
+        carriedOverDays: 0,
+        expiredDays: 0,
+        expiresAt: new Date('2028-01-01'),
+      },
+    })
+  }
   const leaveRequest = await prisma.leaveRequest.create({
     data: {
       userId: employeeId,
       type: leaveType,
       startDate: '2026-03-10',
       endDate: '2026-03-10',
-      days: days ?? (LEAVE_TYPE_DAYS[leaveType] || 1),
+      days: days ?? (LEAVE_TYPE_DAYS[leaveType] ?? 1),
       reason: 'テスト休暇申請',
       status: 'pending',
     },
@@ -109,7 +124,6 @@ describe('Approvals API', () => {
       employeeId: employee.id,
       adminId: admin.id,
       leaveType: 'special',
-      days: 1,
     })
     setAdminAuth(admin.id, admin.role)
 

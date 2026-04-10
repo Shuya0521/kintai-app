@@ -14,8 +14,15 @@ export async function POST(req: NextRequest) {
     if (!employeeNumber) {
       return jsonError('社員番号を入力してください', 400)
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate) || isNaN(new Date(joinDate).getTime())) {
-      return jsonError('入社日はYYYY-MM-DD形式の有効な日付を入力してください', 400)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) {
+      return jsonError('入社日はYYYY-MM-DD形式で入力してください', 400)
+    }
+    {
+      const [jy, jm, jd] = joinDate.split('-').map(Number)
+      const jDate = new Date(jy, jm - 1, jd)
+      if (jDate.getFullYear() !== jy || jDate.getMonth() + 1 !== jm || jDate.getDate() !== jd) {
+        return jsonError('入社日が無効です（存在しない日付です）', 400)
+      }
     }
 
     // パスワード強度チェック

@@ -41,8 +41,15 @@ export async function POST(req: NextRequest) {
     if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
       return jsonError('日付はYYYY-MM-DD形式で入力してください', 400)
     }
-    if (isNaN(new Date(startDate).getTime()) || isNaN(new Date(endDate).getTime())) {
-      return jsonError('無効な日付です', 400)
+    {
+      const [sy, sm, sd] = startDate.split('-').map(Number)
+      const [ey, em, ed] = endDate.split('-').map(Number)
+      const sDate = new Date(sy, sm - 1, sd)
+      const eDate = new Date(ey, em - 1, ed)
+      if (sDate.getFullYear() !== sy || sDate.getMonth() + 1 !== sm || sDate.getDate() !== sd ||
+          eDate.getFullYear() !== ey || eDate.getMonth() + 1 !== em || eDate.getDate() !== ed) {
+        return jsonError('無効な日付です', 400)
+      }
     }
     if (endDate < startDate) {
       return jsonError('終了日は開始日以降を指定してください', 400)

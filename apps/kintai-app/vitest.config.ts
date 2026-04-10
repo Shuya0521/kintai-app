@@ -20,6 +20,8 @@ export default defineProject({
   resolve: {
     alias: [
       { find: /^@\/(.*)/, replacement: `${path.resolve(__dirname)}/$1` },
+      // @kintai/shared/src/... → packages/shared/src/... (ルートファイル内の深いimport用)
+      { find: /^@kintai\/shared\/src\/(.*)/, replacement: `${path.resolve(__dirname, '../../packages/shared/src')}/$1` },
       { find: '@kintai/shared', replacement: path.resolve(__dirname, '../../packages/shared/src') },
     ],
   },

@@ -77,9 +77,9 @@ describe('Attendance API', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.attendance.status).toBe('done')
-    // みなし休憩控除: breakTotalMin は DEEMED_BREAK_MIN（60分）固定
-    expect(data.attendance.breakTotalMin).toBe(DEEMED_BREAK_MIN)
-    // 実働: 約120分 - 60分みなし = 約60分
+    // 法定休憩: 2h勤務（6h以下）→ 休憩0分
+    expect(data.attendance.breakTotalMin).toBe(0)
+    // 実働: 約120分 - 0分休憩 = 約120分
     expect(data.attendance.workMin).toBeGreaterThan(0)
     expect(data.attendance.checkOutTime).not.toBeNull()
   })

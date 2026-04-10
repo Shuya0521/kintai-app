@@ -15,9 +15,9 @@ describe('JWT token', () => {
     expect(payload!.type).toBe('access')
   })
 
-  it('J-01b: createRefreshToken → verifyToken でpayload一致', () => {
+  it('J-01b: createRefreshToken → verifyToken(refresh) でpayload一致', () => {
     const token = createRefreshToken('user-456', '部長')
-    const payload = verifyToken(token)
+    const payload = verifyToken(token, 'refresh')
     expect(payload).not.toBeNull()
     expect(payload!.userId).toBe('user-456')
     expect(payload!.role).toBe('部長')
@@ -41,10 +41,8 @@ describe('JWT token', () => {
     expect(payload!.type).toBe('access')
   })
 
-  it('J-01d: role省略時 → 空文字', () => {
-    const token = createAccessToken('user-000')
-    const payload = verifyToken(token)
-    expect(payload!.role).toBe('')
+  it('J-01d: role省略時 → Error throw（role必須化済み）', () => {
+    expect(() => createAccessToken('user-000', '')).toThrow('role is required')
   })
 })
 
@@ -52,7 +50,7 @@ describe('JWT_SECRET未設定', () => {
   it('J-03: JWT_SECRET未設定 → Error throw', () => {
     const original = process.env.JWT_SECRET
     delete process.env.JWT_SECRET
-    expect(() => createAccessToken('user-x')).toThrow('JWT_SECRET')
+    expect(() => createAccessToken('user-x', '社員')).toThrow('JWT_SECRET')
     process.env.JWT_SECRET = original
   })
 })

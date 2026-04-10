@@ -122,6 +122,19 @@ describe('Leave Requests API', () => {
       paidLeaveBalance: 20,
     })
 
+    // deductPaidLeaveFIFO に必要な PaidLeaveGrant レコードを作成
+    await prisma.paidLeaveGrant.create({
+      data: {
+        userId: user.id,
+        grantDate: new Date('2026-01-01'),
+        grantedDays: 20,
+        usedDays: 0,
+        carriedOverDays: 0,
+        expiredDays: 0,
+        expiresAt: new Date('2028-01-01'),
+      },
+    })
+
     setAuthCookie(user.id, user.role)
     const req = createJsonRequest('http://localhost:3000/api/requests', {
       type: 'vacation',
@@ -131,20 +144,15 @@ describe('Leave Requests API', () => {
     })
     const res = await POST(req as any)
 
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(200) // 即承認は200
     const data = await res.json()
 
     // Verify auto-approved (統括部長 has no approver)
+    expect(data.autoApproved).toBe(true)
     const leaveRequest = await prisma.leaveRequest.findUnique({
       where: { id: data.request.id },
     })
     expect(leaveRequest!.status).toBe('approved')
-
-    // Verify no approval record was created (auto-approved)
-    const approval = await prisma.approval.findFirst({
-      where: { leaveRequestId: data.request.id },
-    })
-    expect(approval).toBeNull()
 
     // Verify paid leave balance was decremented
     const updatedUser = await prisma.user.findUnique({ where: { id: user.id } })

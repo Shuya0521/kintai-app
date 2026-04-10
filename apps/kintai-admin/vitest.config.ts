@@ -20,7 +20,7 @@ export default defineProject({
   resolve: {
     alias: [
       { find: /^@\/(.*)/, replacement: `${path.resolve(__dirname)}/$1` },
-      { find: '@kintai/shared/src/excel/generator', replacement: path.resolve(__dirname, '../../packages/shared/src/excel/generator') },
+      { find: /^@kintai\/shared\/src\/(.*)/, replacement: `${path.resolve(__dirname, '../../packages/shared/src')}/$1` },
       { find: '@kintai/shared', replacement: path.resolve(__dirname, '../../packages/shared/src') },
     ],
   },

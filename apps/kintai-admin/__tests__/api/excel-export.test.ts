@@ -124,8 +124,8 @@ describe('Excel Export API', () => {
     expect(buffer.byteLength).toBeGreaterThan(0)
   })
 
-  // ── EX-04: 非管理者 → 403 ─────────────────────────────────
-  it('EX-04: non-admin user returns 403', async () => {
+  // ── EX-04: 未認証 → 401 ─────────────────────────────────
+  it('EX-04: unauthenticated user returns 401', async () => {
     clearAuth()
 
     const req = new Request('http://localhost/api/excel/export', {
@@ -135,6 +135,6 @@ describe('Excel Export API', () => {
     })
     const res = await POST(req as any)
 
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 })

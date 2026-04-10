@@ -51,8 +51,8 @@ describe('getApproverRoles', () => {
     expect(getApproverRoles('社員')).toEqual(['部長'])
   })
 
-  it('R-07: "部長" → ["統括部長"]', () => {
-    expect(getApproverRoles('部長')).toEqual(['統括部長'])
+  it('R-07: "部長" → ["取締役"]（統括部長不在のため）', () => {
+    expect(getApproverRoles('部長')).toEqual(['取締役'])
   })
 
   it('R-08: "統括部長" → []', () => {
