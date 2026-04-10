@@ -25,32 +25,46 @@ export async function POST(req: NextRequest) {
       return jsonError('このアカウントは無効化されています', 403)
     }
 
-    // ロックアウトチェック
-    const lockout = checkLockout(user.failedLoginAttempts, user.lockedUntil)
-    if (lockout.locked) {
-      return jsonError(lockout.message || 'アカウントがロックされています', 423)
-    }
-
-    const valid = await verifyPassword(password, user.passwordHash)
-    if (!valid) {
-      // 失敗回数インクリメント
-      const newAttempts = user.failedLoginAttempts + 1
-      const newLockout = calculateLockout(newAttempts)
-      await prisma.user.update({
+    // ロックアウトチェック＆失敗カウントをトランザクション内で原子的に処理
+    const authResult = await prisma.$transaction(async (tx) => {
+      const latest = await tx.user.findUnique({
         where: { id: user.id },
-        data: {
-          failedLoginAttempts: newAttempts,
-          lockedUntil: newLockout.lockedUntil || null,
-        },
+        select: { failedLoginAttempts: true, lockedUntil: true, passwordHash: true },
       })
+      if (!latest) return { status: 'not_found' as const }
+
+      const lockout = checkLockout(latest.failedLoginAttempts, latest.lockedUntil)
+      if (lockout.locked) {
+        return { status: 'locked' as const, message: lockout.message }
+      }
+
+      const valid = await verifyPassword(password, latest.passwordHash)
+      if (!valid) {
+        const newAttempts = latest.failedLoginAttempts + 1
+        const newLockout = calculateLockout(newAttempts)
+        await tx.user.update({
+          where: { id: user.id },
+          data: { failedLoginAttempts: newAttempts, lockedUntil: newLockout.lockedUntil || null },
+        })
+        return { status: 'invalid_password' as const }
+      }
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      })
+      return { status: 'ok' as const }
+    })
+
+    if (authResult.status === 'not_found') {
       return jsonError('メールアドレスまたはパスワードが正しくありません', 401)
     }
-
-    // ログイン成功: 失敗回数リセット
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null },
-    })
+    if (authResult.status === 'locked') {
+      return jsonError(authResult.message || 'アカウントがロックされています', 423)
+    }
+    if (authResult.status === 'invalid_password') {
+      return jsonError('メールアドレスまたはパスワードが正しくありません', 401)
+    }
 
     const token = createToken(user.id, user.role)
     const cookieStore = await cookies()

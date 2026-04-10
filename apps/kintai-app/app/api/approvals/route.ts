@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, jsonOk, jsonError } from '@/lib/auth'
 import { isApproverRole, recalculateAttendanceMinutes } from '@kintai/shared'
+import { deductPaidLeaveFIFO } from '@kintai/shared/src/services/leave.service'
 
 export async function GET() {
   const me = await getCurrentUser()
@@ -76,18 +77,8 @@ export async function POST(req: NextRequest) {
         if (action === 'approve') {
           const deductDays = approval.leaveRequest.days
           if (deductDays > 0) {
-            // TOCTOU対策: トランザクション内で残日数を再チェック
-            const current = await tx.user.findUnique({
-              where: { id: approval.requesterId },
-              select: { paidLeaveBalance: true },
-            })
-            if (!current || current.paidLeaveBalance < deductDays) {
-              throw new Error('INSUFFICIENT_BALANCE')
-            }
-            await tx.user.update({
-              where: { id: approval.requesterId },
-              data: { paidLeaveBalance: { decrement: deductDays } },
-            })
+            const result = await deductPaidLeaveFIFO(approval.requesterId, deductDays, tx)
+            if (!result.success) throw new Error('INSUFFICIENT_BALANCE')
           }
         }
       }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
 import { sendMail, approvalRequestEmail } from '@kintai/shared/src/services/email.service'
 import { LEAVE_TYPE_LABELS, LEAVE_TYPES } from '@kintai/shared'
+import { deductPaidLeaveFIFO } from '@kintai/shared/src/services/leave.service'
 
 // 日数を計算（土日除外）
 function calcDays(type: string, startDate: string, endDate: string): number {
@@ -19,7 +20,7 @@ function calcDays(type: string, startDate: string, endDate: string): number {
     if (dow !== 0 && dow !== 6) count++ // 土日除外
     d.setDate(d.getDate() + 1)
   }
-  return count || 1
+  return count
 }
 
 export async function POST(req: NextRequest) {
@@ -41,6 +42,11 @@ export async function POST(req: NextRequest) {
     }
 
     const days = calcDays(type, startDate, endDate)
+
+    // 平日を含まない日程は却下
+    if (type === 'vacation' && days === 0) {
+      return jsonError('選択した日程に平日が含まれていません', 400)
+    }
 
     // Bug #4: 申請時に残日数チェック
     if (type === 'vacation' || type === 'half-am' || type === 'half-pm') {
@@ -69,11 +75,8 @@ export async function POST(req: NextRequest) {
     if (approverRoles.length === 0) {
       const updated = await prisma.$transaction(async (tx) => {
         if (days > 0) {
-          const current = await tx.user.findUnique({ where: { id: me.id }, select: { paidLeaveBalance: true } })
-          if (!current || current.paidLeaveBalance < days) {
-            throw new Error('INSUFFICIENT_BALANCE')
-          }
-          await tx.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
+          const result = await deductPaidLeaveFIFO(me.id, days, tx)
+          if (!result.success) throw new Error('INSUFFICIENT_BALANCE')
         }
         return tx.leaveRequest.update({
           where: { id: request.id },
@@ -87,18 +90,20 @@ export async function POST(req: NextRequest) {
       return jsonOk({ success: true, request: updated, autoApproved: true })
     }
 
-    // 承認者ロール検索: まず同部署、なければ全社から
+    // 承認者ロール検索: まず同部署、なければ全社から（社員番号昇順で決定論的に選択）
     const approver = await prisma.user.findFirst({
       where: {
         role: { in: approverRoles },
         status: 'active',
         department: me.department,
       },
+      orderBy: { employeeNumber: 'asc' },
     }) || await prisma.user.findFirst({
       where: {
         role: { in: approverRoles },
         status: 'active',
       },
+      orderBy: { employeeNumber: 'asc' },
     })
     const approverId = approver?.id || null
 
@@ -131,11 +136,8 @@ export async function POST(req: NextRequest) {
       // Auto-approve if no approver found
       const updated = await prisma.$transaction(async (tx) => {
         if (days > 0) {
-          const current = await tx.user.findUnique({ where: { id: me.id }, select: { paidLeaveBalance: true } })
-          if (!current || current.paidLeaveBalance < days) {
-            throw new Error('INSUFFICIENT_BALANCE')
-          }
-          await tx.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
+          const result = await deductPaidLeaveFIFO(me.id, days, tx)
+          if (!result.success) throw new Error('INSUFFICIENT_BALANCE')
         }
         return tx.leaveRequest.update({
           where: { id: request.id },

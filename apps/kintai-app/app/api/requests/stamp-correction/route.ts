@@ -51,11 +51,13 @@ export async function POST(req: NextRequest) {
           status: 'active',
           department: me.department,
         },
+        orderBy: { employeeNumber: 'asc' },
       }) || await prisma.user.findFirst({
         where: {
           role: { in: approverRoles },
           status: 'active',
         },
+        orderBy: { employeeNumber: 'asc' },
       })
       approverId = approver?.id || null
     }

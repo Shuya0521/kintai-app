@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
-import { prisma, isApproverRole, STANDARD_WORK_MIN, jsonOk, jsonError } from '@kintai/shared'
+import { prisma, isApproverRole, recalculateAttendanceMinutes, jsonOk, jsonError } from '@kintai/shared'
 import { sendMail, approvalResultEmail } from '@kintai/shared/src/services/email.service'
+import { deductPaidLeaveFIFO } from '@kintai/shared/src/services/leave.service'
 import { getCurrentAdmin } from '@/lib/auth'
 
 export async function GET() {
@@ -76,18 +77,8 @@ export async function POST(req: NextRequest) {
         if (action === 'approve') {
           const deductDays = approval.leaveRequest.days
           if (deductDays > 0) {
-            // TOCTOU対策: トランザクション内で残日数を再チェック
-            const current = await tx.user.findUnique({
-              where: { id: approval.requesterId },
-              select: { paidLeaveBalance: true },
-            })
-            if (!current || current.paidLeaveBalance < deductDays) {
-              throw new Error('INSUFFICIENT_BALANCE')
-            }
-            await tx.user.update({
-              where: { id: approval.requesterId },
-              data: { paidLeaveBalance: { decrement: deductDays } },
-            })
+            const result = await deductPaidLeaveFIFO(approval.requesterId, deductDays, tx)
+            if (!result.success) throw new Error('INSUFFICIENT_BALANCE')
           }
         }
       }
@@ -119,18 +110,21 @@ export async function POST(req: NextRequest) {
               correction.breakTotalMin !== null
                 ? correction.breakTotalMin
                 : (attendance.breakTotalMin ?? 60)
-            const workMin = Math.max(
-              0,
-              Math.floor((newCheckOut.getTime() - newCheckIn.getTime()) / 60000) - breakMin
-            )
-            const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
-            updateData.workMin = workMin
-            updateData.overtimeMin = overtimeMin
+            const calc = recalculateAttendanceMinutes({
+              checkInTime: newCheckIn,
+              checkOutTime: newCheckOut,
+              breakTotalMin: breakMin,
+              isHolidayWork: attendance.isHolidayWork,
+            })
+            updateData.workMin = calc.workMin
+            updateData.overtimeMin = calc.overtimeMin
+            updateData.lateMin = calc.lateMin
+            updateData.earlyLeaveMin = calc.earlyLeaveMin
             updateData.status = 'done'
 
             // OvertimeRecord を同期更新
             const [yr, mo] = attendance.date.split('-').slice(0, 2).map(Number)
-            const diff = overtimeMin - (attendance.overtimeMin ?? 0)
+            const diff = calc.overtimeMin - (attendance.overtimeMin ?? 0)
             if (diff !== 0) {
               const existing = await tx.overtimeRecord.findUnique({
                 where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
@@ -138,7 +132,7 @@ export async function POST(req: NextRequest) {
               const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
               await tx.overtimeRecord.upsert({
                 where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
-                create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, overtimeMin) },
+                create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, calc.overtimeMin) },
                 update: { totalMin: safeTotalMin },
               })
             }
