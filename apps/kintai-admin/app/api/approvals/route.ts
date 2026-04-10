@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
     if (!approval) return jsonError('承認レコードが見つかりません', 404)
     if (approval.status !== 'pending' && approval.status !== 'escalated') return jsonError('この申請は既に処理済みです', 400)
 
+    // システム管理者・取締役・統括部長以外は自分宛ての承認のみ処理可能
+    const isAdmin = me.role === 'システム管理者' || me.role === '取締役' || me.role === '統括部長'
+    if (!isAdmin && approval.approverId !== me.id) {
+      return jsonError('この申請の承認権限がありません', 403)
+    }
+
     const newStatus = action === 'approve' ? 'approved' : 'rejected'
 
     const txResult = await prisma.$transaction(async (tx) => {

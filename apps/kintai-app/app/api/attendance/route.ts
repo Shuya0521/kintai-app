@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, jsonOk, jsonError } from '@/lib/auth'
-import { STANDARD_WORK_MIN, LEGAL_BREAK_MIN_45, LEGAL_BREAK_MIN_60, getTodayStr } from '@kintai/shared'
+import { LEGAL_BREAK_MIN_45, LEGAL_BREAK_MIN_60, getTodayStr, recalculateAttendanceMinutes } from '@kintai/shared'
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser()
@@ -47,8 +47,14 @@ export async function POST(req: NextRequest) {
       const breakMin = elapsed > 8 * 60 ? LEGAL_BREAK_MIN_60
                      : elapsed > 6 * 60 ? LEGAL_BREAK_MIN_45
                      : 0
-      const workMin = Math.max(0, elapsed - breakMin)
-      const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
+      // recalculateAttendanceMinutes で遅刻・早退も計算
+      const calc = recalculateAttendanceMinutes({
+        checkInTime: record.checkInTime!,
+        checkOutTime: now,
+        breakTotalMin: breakMin,
+        isHolidayWork: record.isHolidayWork,
+      })
+      const { workMin, overtimeMin, lateMin, earlyLeaveMin } = calc
       // Bug #5: attendance.date から year/month を取得（UTCズレ防止）
       const [year, month] = record!.date.split('-').slice(0, 2).map(Number)
 
@@ -56,7 +62,7 @@ export async function POST(req: NextRequest) {
       record = await prisma.$transaction(async (tx) => {
         const updated = await tx.attendance.update({
           where: { id: record!.id },
-          data: { checkOutTime: now, breakTotalMin: breakMin, workMin, overtimeMin, status: 'done' },
+          data: { checkOutTime: now, breakTotalMin: breakMin, workMin, overtimeMin, lateMin, earlyLeaveMin, status: 'done' },
         })
 
         if (overtimeMin > 0) {
@@ -126,8 +132,12 @@ export async function GET(req: NextRequest) {
           userId: me.id,
           status: 'approved',
           type: { in: ['vacation', 'half-am', 'half-pm'] },
-          // Bug #7: 月をまたぐ有給も正しく集計
-          startDate: { lte: `${month}-31` },
+          // 月をまたぐ有給も正しく集計（月末日を正確に計算）
+          startDate: { lte: (() => {
+            const [y, m] = month.split('-').map(Number)
+            const lastDay = new Date(y, m, 0).getDate()
+            return `${month}-${String(lastDay).padStart(2, '0')}`
+          })() },
           endDate: { gte: `${month}-01` },
         },
       }),

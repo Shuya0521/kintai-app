@@ -45,7 +45,8 @@ export async function PATCH(req: NextRequest) {
     const { userId, ...updates } = await req.json()
     if (!userId) return jsonError('ユーザーIDが必要です', 400)
 
-    const allowedFields = ['lastName', 'firstName', 'lastNameKana', 'firstNameKana', 'phone', 'role', 'department', 'workType', 'paidLeaveBalance', 'status', 'employeeNumber']
+    // employeeNumber は管理者でも変更不可（給与マスタ等との整合性を保つため）
+    const allowedFields = ['lastName', 'firstName', 'lastNameKana', 'firstNameKana', 'phone', 'role', 'department', 'workType', 'paidLeaveBalance', 'status']
     const data: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (updates[key] !== undefined) data[key] = updates[key]
@@ -60,6 +61,17 @@ export async function PATCH(req: NextRequest) {
     if (data.workType && !(WORK_TYPES as readonly string[]).includes(data.workType as string)) {
       return jsonError('無効な勤務形態です', 400)
     }
+    if (data.paidLeaveBalance !== undefined) {
+      const bal = Number(data.paidLeaveBalance)
+      if (!Number.isFinite(bal) || bal < 0) {
+        return jsonError('有給残日数は0以上の数値を指定してください', 400)
+      }
+      data.paidLeaveBalance = bal
+    }
+
+    // 対象ユーザーの存在確認（P2025→500 防止）
+    const existing = await prisma.user.findUnique({ where: { id: userId } })
+    if (!existing) return jsonError('ユーザーが見つかりません', 404)
 
     const user = await prisma.user.update({
       where: { id: userId },

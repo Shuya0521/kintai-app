@@ -16,15 +16,17 @@ export interface TokenPayload {
 }
 
 /** アクセストークン生成（有効期限1日） */
-export function createAccessToken(userId: string, role?: string): string {
-  return jwt.sign({ userId, role: role || '', type: 'access' } satisfies TokenPayload, getJwtSecret(), {
+export function createAccessToken(userId: string, role: string): string {
+  if (!role) throw new Error('createAccessToken: role is required')
+  return jwt.sign({ userId, role, type: 'access' } satisfies TokenPayload, getJwtSecret(), {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   })
 }
 
 /** リフレッシュトークン生成（有効期限14日） */
-export function createRefreshToken(userId: string, role?: string): string {
-  return jwt.sign({ userId, role: role || '', type: 'refresh' } satisfies TokenPayload, getJwtSecret(), {
+export function createRefreshToken(userId: string, role: string): string {
+  if (!role) throw new Error('createRefreshToken: role is required')
+  return jwt.sign({ userId, role, type: 'refresh' } satisfies TokenPayload, getJwtSecret(), {
     expiresIn: '14d',
   })
 }
@@ -41,6 +43,6 @@ export function verifyToken(token: string, expectedType: 'access' | 'refresh' = 
 }
 
 /** 後方互換: 旧createToken（アクセストークンを返す） */
-export function createToken(userId: string, role?: string): string {
+export function createToken(userId: string, role: string): string {
   return createAccessToken(userId, role)
 }
