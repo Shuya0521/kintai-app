@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
 
       const inTime = record.checkInTime!.getTime()
       const breakMin = DEEMED_BREAK_MIN // みなし休憩60分固定
-      const workMin = Math.floor((now.getTime() - inTime) / 60000) - breakMin
+      // Bug #5: 負の workMin を防ぐ
+      const workMin = Math.max(0, Math.floor((now.getTime() - inTime) / 60000) - breakMin)
       const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
       const year = now.getFullYear()
       const month = now.getMonth() + 1
@@ -117,6 +118,7 @@ export async function GET(req: NextRequest) {
           userId: me.id,
           status: 'approved',
           type: { in: ['vacation', 'half-am', 'half-pm'] },
+          startDate: { startsWith: month }, // Bug #4: 月フィルタを追加
         },
       }),
     ])
