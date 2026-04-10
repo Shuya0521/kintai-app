@@ -157,7 +157,7 @@ const M: Record<string, React.CSSProperties> = {
   },
   tab: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    gap: 2, padding: '4px 0', minWidth: 56, cursor: 'pointer',
+    gap: 3, padding: '8px 0', minWidth: 64, cursor: 'pointer',
     WebkitTapHighlightColor: 'transparent',
     touchAction: 'manipulation',
     userSelect: 'none',
@@ -166,8 +166,8 @@ const M: Record<string, React.CSSProperties> = {
     background: 'none',
     font: 'inherit',
   },
-  tabIcon: { fontSize: 20, lineHeight: 1 },
-  tabLabel: { fontSize: 9, fontWeight: 500 },
+  tabIcon: { fontSize: 26, lineHeight: 1 },
+  tabLabel: { fontSize: 11, fontWeight: 500 },
 }
 
 // ── デスクトップスタイル ──────────────────────────────
