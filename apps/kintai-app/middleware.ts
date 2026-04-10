@@ -12,6 +12,7 @@ import { verifyToken } from '@kintai/shared'
 const PUBLIC_PATHS = [
   '/login',
   '/register',
+  '/offline',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/refresh',

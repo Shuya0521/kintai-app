@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, isAdminRole, jsonOk, jsonError } from '@/lib/auth'
+import { ROLES, DEPARTMENTS, WORK_TYPES } from '@kintai/shared'
 
 export async function GET(req: NextRequest) {
   const me = await getCurrentUser()
@@ -48,6 +49,16 @@ export async function PATCH(req: NextRequest) {
     const data: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (updates[key] !== undefined) data[key] = updates[key]
+    }
+
+    if (data.role && !(ROLES as readonly string[]).includes(data.role as string)) {
+      return jsonError('無効なロールです', 400)
+    }
+    if (data.department && !(DEPARTMENTS as readonly string[]).includes(data.department as string)) {
+      return jsonError('無効な部署です', 400)
+    }
+    if (data.workType && !(WORK_TYPES as readonly string[]).includes(data.workType as string)) {
+      return jsonError('無効な勤務形態です', 400)
     }
 
     const user = await prisma.user.update({

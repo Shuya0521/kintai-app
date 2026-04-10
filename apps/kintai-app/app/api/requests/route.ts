@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
 import { sendMail, approvalRequestEmail } from '@kintai/shared/src/services/email.service'
-import { LEAVE_TYPE_LABELS } from '@kintai/shared'
+import { LEAVE_TYPE_LABELS, LEAVE_TYPES } from '@kintai/shared'
 
 // 日数を計算（土日除外）
 function calcDays(type: string, startDate: string, endDate: string): number {
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
     const { type, startDate, endDate, reason } = await req.json()
     if (!type || !startDate || !endDate) {
       return jsonError('申請種別と日付を入力してください', 400)
+    }
+    if (!(LEAVE_TYPES as readonly string[]).includes(type)) {
+      return jsonError('無効な申請種別です', 400)
     }
 
     // Bug #6: 終了日が開始日より前の場合はエラー
@@ -64,15 +67,23 @@ export async function POST(req: NextRequest) {
 
     // 取締役・統括部長は承認不要（即承認）
     if (approverRoles.length === 0) {
-      const updated = await prisma.leaveRequest.update({
-        where: { id: request.id },
-        data: { status: 'approved', processedAt: new Date() },
+      const updated = await prisma.$transaction(async (tx) => {
+        if (days > 0) {
+          const current = await tx.user.findUnique({ where: { id: me.id }, select: { paidLeaveBalance: true } })
+          if (!current || current.paidLeaveBalance < days) {
+            throw new Error('INSUFFICIENT_BALANCE')
+          }
+          await tx.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
+        }
+        return tx.leaveRequest.update({
+          where: { id: request.id },
+          data: { status: 'approved', processedAt: new Date() },
+        })
+      }).catch((e) => {
+        if (e.message === 'INSUFFICIENT_BALANCE') return null
+        throw e
       })
-      // Bug #12: days > 0 で統一判定
-      if (days > 0) {
-        await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
-      }
-      // Bug #2: updated を返す
+      if (!updated) return jsonError('有給残日数が不足しています', 400)
       return jsonOk({ success: true, request: updated, autoApproved: true })
     }
 
@@ -118,16 +129,23 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Auto-approve if no approver found
-      const updated = await prisma.leaveRequest.update({
-        where: { id: request.id },
-        data: { status: 'approved', processedAt: new Date() },
+      const updated = await prisma.$transaction(async (tx) => {
+        if (days > 0) {
+          const current = await tx.user.findUnique({ where: { id: me.id }, select: { paidLeaveBalance: true } })
+          if (!current || current.paidLeaveBalance < days) {
+            throw new Error('INSUFFICIENT_BALANCE')
+          }
+          await tx.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
+        }
+        return tx.leaveRequest.update({
+          where: { id: request.id },
+          data: { status: 'approved', processedAt: new Date() },
+        })
+      }).catch((e) => {
+        if (e.message === 'INSUFFICIENT_BALANCE') return null
+        throw e
       })
-
-      // Deduct paid leave（days > 0 で統一判定）
-      if (days > 0) {
-        await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
-      }
-
+      if (!updated) return jsonError('有給残日数が不足しています', 400)
       return jsonOk({ request: updated, message: '申請を送信しました（自動承認）' }, 201)
     }
 

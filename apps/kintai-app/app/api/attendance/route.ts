@@ -9,6 +9,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const { action, workPlace } = await req.json()
+    const VALID_WORK_PLACES = ['office', 'remote']
+    if (workPlace && !VALID_WORK_PLACES.includes(workPlace)) {
+      return jsonError('無効な勤務場所です', 400)
+    }
     const today = getTodayStr()
     const now = new Date()
 

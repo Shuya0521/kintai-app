@@ -7,9 +7,13 @@ export async function GET() {
   if (!me || !isAdminRole(me.role)) return jsonError('権限がありません', 403)
 
   const settings = await prisma.setting.findMany()
-  const result: Record<string, string> = {}
+  const result: Record<string, unknown> = {}
   for (const s of settings) {
-    result[s.key] = s.value
+    try {
+      result[s.key] = JSON.parse(s.value)
+    } catch {
+      result[s.key] = s.value
+    }
   }
   return jsonOk({ settings: result })
 }

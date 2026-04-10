@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
     if (!lastName || !firstName || !email || !password || !department || !joinDate) {
       return jsonError('必須項目を入力してください', 400)
     }
+    if (!employeeNumber) {
+      return jsonError('社員番号を入力してください', 400)
+    }
 
     // パスワード強度チェック
     const pwCheck = validatePasswordStrength(password)
@@ -22,6 +25,10 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return jsonError('このメールアドレスは既に登録されています', 409)
     }
+    const existingEmpNo = await prisma.user.findUnique({ where: { employeeNumber } })
+    if (existingEmpNo) {
+      return jsonError('この社員番号は既に登録されています', 409)
+    }
 
     const passwordHash = await hashPassword(password)
 
@@ -29,7 +36,7 @@ export async function POST(req: NextRequest) {
       data: {
         email,
         passwordHash,
-        employeeNumber: employeeNumber || '',
+        employeeNumber,
         lastName,
         firstName,
         lastNameKana: lastNameKana || '',
