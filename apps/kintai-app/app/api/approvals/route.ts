@@ -7,7 +7,7 @@ export async function GET() {
   const me = await getCurrentUser()
   if (!me || !isApproverRole(me.role)) return jsonError('権限がありません', 403)
 
-  // N+1クエリ修正: include で requester を一括取得
+  try {
   const approvals = await prisma.approval.findMany({
     where: { approverId: me.id },
     orderBy: { createdAt: 'desc' },
@@ -25,6 +25,10 @@ export async function GET() {
   })
 
   return jsonOk({ approvals })
+  } catch (error) {
+    console.error('GET approvals error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }
 
 export async function POST(req: NextRequest) {

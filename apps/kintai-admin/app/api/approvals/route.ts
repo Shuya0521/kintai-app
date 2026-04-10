@@ -7,6 +7,7 @@ export async function GET() {
   const me = await getCurrentAdmin()
   if (!me || !isApproverRole(me.role)) return jsonError('権限がありません', 403)
 
+  try {
   // システム管理者・取締役は全承認を閲覧可能、それ以外は自分が承認者のもののみ
   const isAdmin = me.role === 'システム管理者' || me.role === '取締役' || me.role === '統括部長'
   const where = isAdmin ? {} : { approverId: me.id }
@@ -29,6 +30,10 @@ export async function GET() {
   })
 
   return jsonOk({ approvals })
+  } catch (error) {
+    console.error('GET approvals error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }
 
 export async function POST(req: NextRequest) {

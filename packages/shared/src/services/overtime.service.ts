@@ -273,11 +273,12 @@ async function checkSpecialClause(
     }
   }
 
-  if (exceededMonths >= THRESHOLDS.SPECIAL_CLAUSE_MAX_MONTHS) {
+  if (exceededMonths > THRESHOLDS.SPECIAL_CLAUSE_MAX_MONTHS) {
+    // 7回以上が法令違反（6回はギリギリ許容）
     return {
       type: 'special_clause',
       level: 'violation',
-      message: `特別条項の年6回上限に達しました（${exceededMonths}回/年）`,
+      message: `特別条項の年6回上限を超過しました（${exceededMonths}回/年）`,
       detail: `${year}年中に月45時間超の残業が${exceededMonths}回発生`,
     }
   }
@@ -306,18 +307,19 @@ export interface BreakTimeCheckResult {
 /**
  * 休憩時間の法定チェック（労基法34条）
  *
- * @param workMin 実労働時間（分）
+ * @param totalMin 拘束時間（分）— 休憩控除前の在社時間
  * @param breakMin 実休憩時間（分）
  */
 export function checkBreakTimeCompliance(
-  workMin: number,
+  totalMin: number,
   breakMin: number
 ): BreakTimeCheckResult {
   let requiredMin = 0
 
-  if (workMin > 8 * 60) {
+  // 拘束時間基準で判定（attendance.serviceと統一）
+  if (totalMin > 8 * 60) {
     requiredMin = 60
-  } else if (workMin > 6 * 60) {
+  } else if (totalMin > 6 * 60) {
     requiredMin = 45
   }
 

@@ -69,7 +69,7 @@ export default function DailyPage() {
       <main style={S.main}>
         <div style={S.page}>
           <div style={S.pageTitle}>日次一覧</div>
-          <div style={S.pageSub}>2026年3月 / {user.name}</div>
+          <div style={S.pageSub}>{new Date().getFullYear()}年{new Date().getMonth() + 1}月 / {user.name}</div>
           <div style={S.card}>
             <div style={S.cardHeader}>
               <span style={S.cardTitle}>📅 打刻履歴</span>
@@ -97,7 +97,7 @@ export default function DailyPage() {
                       <td style={{ ...S.td, fontFamily: 'DM Mono, monospace', color: l.ot === '—' || l.ot === '0h00m' ? 'var(--t3)' : 'var(--amber)' }}>{l.ot}</td>
                       <td style={S.td}><StatusBadge st={l.st} /></td>
                       <td style={S.td}>
-                        <span style={S.amendLink} onClick={() => showToast('修正申請を送信しました')}>修正申請</span>
+                        <span style={S.amendLink} onClick={() => router.push(`/employee/requests/stamp-correction?date=${l.date}`)}>修正申請</span>
                       </td>
                     </tr>
                   ))}

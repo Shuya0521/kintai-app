@@ -83,7 +83,7 @@ export default function SettingsPage() {
       })
       setToast('保存しました')
       setTimeout(() => setToast(''), 2500)
-    } catch { setToast('保存に失敗しました') }
+    } catch { setToast('保存に失敗しました'); setTimeout(() => setToast(''), 3000) }
     finally { setSaving(false) }
   }
 
