@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_JP } from 'next/font/google'
 import './globals.css'
 
@@ -13,6 +13,12 @@ export const metadata: Metadata = {
   description: '勤怠管理システム 管理者画面',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -20,9 +26,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-      </head>
       <body className={notoSansJP.className}>
         {children}
       </body>

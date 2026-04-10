@@ -23,9 +23,11 @@ export function useCurrentUser(): UseCurrentUserResult {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    const controller = new AbortController()
+
+    fetch('/api/auth/me', { signal: controller.signal })
       .then(r => {
-        if (!r.ok) throw new Error() // #15: HTTPステータスチェック
+        if (!r.ok) throw new Error()
         return r.json()
       })
       .then(d => {
@@ -35,12 +37,15 @@ export function useCurrentUser(): UseCurrentUserResult {
         }
         setUser({ name: d.user.name, role: d.user.role })
       })
-      .catch(() => {
+      .catch(err => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         router.push('/login')
       })
       .finally(() => {
         setLoading(false)
       })
+
+    return () => controller.abort()
   }, [router])
 
   return { user, loading }

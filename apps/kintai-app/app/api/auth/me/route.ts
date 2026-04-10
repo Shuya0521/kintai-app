@@ -16,6 +16,7 @@ export async function GET() {
       department: user.department,
       workType: user.workType,
       paidLeaveBalance: user.paidLeaveBalance,
+      mustChangePassword: user.mustChangePassword,
       av: user.lastName.charAt(0),
     },
   })
