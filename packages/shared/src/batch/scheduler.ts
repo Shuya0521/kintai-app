@@ -65,8 +65,8 @@ export function initScheduler(): void {
     }
   })
 
-  // ── 打刻忘れチェック（毎日 22:00、平日のみ）────────
-  cron.schedule('0 22 * * 1-5', async () => {
+  // ── 打刻忘れチェック（毎日 22:00 JST = UTC 13:00、平日のみ）────────
+  cron.schedule('0 13 * * 1-5', async () => {
     console.log('[Batch] 打刻忘れチェック start')
     try {
       const today = getTodayStr()
@@ -194,7 +194,7 @@ async function createMissedAlert(userId: string, date: string, alertType: string
         date,
         alertType,
       })
-      sendMail(user.email, subject, html, 'missedStamp').catch(() => {})
+      sendMail(user.email, subject, html, 'missedStamp').catch(err => console.error('[Batch] missedStamp mail error:', err))
     }
   }
 }
@@ -315,7 +315,7 @@ async function finalizeMonthlyOvertime(year: number, month: number): Promise<voi
           totalHours,
           level,
         })
-        sendMail(emp.email, subject, html, 'overtimeWarning').catch(() => {})
+        sendMail(emp.email, subject, html, 'overtimeWarning').catch(err => console.error('[Batch] overtimeWarning mail error:', err))
       }
     }
   }

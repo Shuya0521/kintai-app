@@ -158,17 +158,14 @@ async function checkYearlyOvertime(
   year: number,
   currentMonth: number
 ): Promise<{ totalMin: number; alert?: OvertimeAlert }> {
-  // 1月〜当月までの残業を集計
-  let totalYearlyMin = 0
-
-  for (let m = 1; m <= currentMonth; m++) {
-    const mStr = `${year}-${String(m).padStart(2, '0')}`
-    const records = await prisma.attendance.findMany({
-      where: { userId, date: { startsWith: mStr }, status: 'done' },
-      select: { overtimeMin: true },
-    })
-    totalYearlyMin += records.reduce((sum, r) => sum + r.overtimeMin, 0)
-  }
+  // 1月〜当月までの残業を一括取得
+  const startDate = `${year}-01-01`
+  const endDate = `${year}-${String(currentMonth).padStart(2, '0')}-31`
+  const records = await prisma.attendance.findMany({
+    where: { userId, date: { gte: startDate, lte: endDate }, status: 'done' },
+    select: { overtimeMin: true },
+  })
+  const totalYearlyMin = records.reduce((sum, r) => sum + r.overtimeMin, 0)
 
   const totalHours = Math.round(totalYearlyMin / 60 * 10) / 10
 
@@ -214,19 +211,28 @@ async function checkRollingAverageOvertime(
 ): Promise<OvertimeAlert[]> {
   const alerts: OvertimeAlert[] = []
 
-  // 過去6ヶ月分のデータを取得
+  // 過去6ヶ月分のデータを一括取得
+  let startMonth = month - 5
+  let startYear = year
+  if (startMonth <= 0) { startMonth += 12; startYear -= 1 }
+  const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`
+  const endDate = `${year}-${String(month).padStart(2, '0')}-31`
+  const allRecords = await prisma.attendance.findMany({
+    where: { userId, date: { gte: startDate, lte: endDate }, status: 'done' },
+    select: { overtimeMin: true, date: true },
+  })
+  const monthlyMap = new Map<string, number>()
+  for (const r of allRecords) {
+    const ym = r.date.slice(0, 7)
+    monthlyMap.set(ym, (monthlyMap.get(ym) ?? 0) + r.overtimeMin)
+  }
   const monthlyMins: number[] = []
   for (let i = 0; i < 6; i++) {
     let m = month - i
     let y = year
     if (m <= 0) { m += 12; y -= 1 }
-
-    const mStr = `${y}-${String(m).padStart(2, '0')}`
-    const records = await prisma.attendance.findMany({
-      where: { userId, date: { startsWith: mStr }, status: 'done' },
-      select: { overtimeMin: true },
-    })
-    monthlyMins.push(records.reduce((sum, r) => sum + r.overtimeMin, 0))
+    const ym = `${y}-${String(m).padStart(2, '0')}`
+    monthlyMins.push(monthlyMap.get(ym) ?? 0)
   }
 
   // 2ヶ月平均、3ヶ月平均、...、6ヶ月平均の全パターンチェック
@@ -258,17 +264,21 @@ async function checkSpecialClause(
   year: number,
   currentMonth: number
 ): Promise<OvertimeAlert | null> {
-  // 年間で45h超の月が何回あるかカウント
+  // 年間で45h超の月が何回あるかカウント（一括取得）
+  const startDate = `${year}-01-01`
+  const endDate = `${year}-${String(currentMonth).padStart(2, '0')}-31`
+  const records = await prisma.attendance.findMany({
+    where: { userId, date: { gte: startDate, lte: endDate }, status: 'done' },
+    select: { overtimeMin: true, date: true },
+  })
+  const monthlyMap = new Map<number, number>()
+  for (const r of records) {
+    const m = parseInt(r.date.slice(5, 7))
+    monthlyMap.set(m, (monthlyMap.get(m) ?? 0) + r.overtimeMin)
+  }
   let exceededMonths = 0
-
   for (let m = 1; m <= currentMonth; m++) {
-    const mStr = `${year}-${String(m).padStart(2, '0')}`
-    const records = await prisma.attendance.findMany({
-      where: { userId, date: { startsWith: mStr }, status: 'done' },
-      select: { overtimeMin: true },
-    })
-    const total = records.reduce((sum, r) => sum + r.overtimeMin, 0)
-    if (total >= THRESHOLDS.WARNING_MONTHLY_MIN) {
+    if ((monthlyMap.get(m) ?? 0) >= THRESHOLDS.WARNING_MONTHLY_MIN) {
       exceededMonths++
     }
   }
