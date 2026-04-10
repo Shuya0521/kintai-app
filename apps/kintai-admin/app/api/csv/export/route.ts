@@ -81,10 +81,13 @@ export async function POST(req: NextRequest) {
       const dayOfWeek = weekdays[new Date(year, month - 1, d).getDay()]
       const att = userAtt.find(a => a.date === dateStr)
 
+      // JST変換: RenderサーバーはUTCのため UTC+9 を明示的に適用
       const formatTime = (dt: Date | null): string => {
         if (!dt) return ''
         const date = new Date(dt)
-        return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+        const jstH = (date.getUTCHours() + 9) % 24
+        const jstM = date.getUTCMinutes()
+        return `${String(jstH).padStart(2, '0')}:${String(jstM).padStart(2, '0')}`
       }
 
       const leaveForDay = leaveRequests.find(l =>

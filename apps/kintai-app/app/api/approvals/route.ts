@@ -131,6 +131,21 @@ export async function POST(req: NextRequest) {
             updateData.workMin = workMin
             updateData.overtimeMin = overtimeMin
             updateData.status = 'done'
+
+            // OvertimeRecord を同期更新（月次残業集計の整合性を保つ）
+            const [yr, mo] = attendance.date.split('-').slice(0, 2).map(Number)
+            const diff = overtimeMin - (attendance.overtimeMin ?? 0)
+            if (diff !== 0) {
+              const existing = await tx.overtimeRecord.findUnique({
+                where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+              })
+              const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
+              await tx.overtimeRecord.upsert({
+                where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+                create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, overtimeMin) },
+                update: { totalMin: safeTotalMin },
+              })
+            }
           }
 
           await tx.attendance.update({

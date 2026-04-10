@@ -115,11 +115,13 @@ export async function POST(req: NextRequest) {
       const att = userAtt.find(a => a.date === dateStr)
       const leaveType = leaveMap.get(dateStr)
 
-      // 出退勤時間をHH:MM形式に
+      // 出退勤時間をHH:MM形式に（JST変換: UTC+9）
       const formatTime = (dt: Date | null): string | null => {
         if (!dt) return null
         const date = new Date(dt)
-        return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+        const jstH = (date.getUTCHours() + 9) % 24
+        const jstM = date.getUTCMinutes()
+        return `${jstH}:${String(jstM).padStart(2, '0')}`
       }
 
       // 勤務時間をHH:MM形式に

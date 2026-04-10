@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
-import { STANDARD_WORK_MIN } from '@kintai/shared'
+import { STANDARD_WORK_MIN, WORK_PLACES } from '@kintai/shared'
 
 /** 打刻修正申請作成 */
 export async function POST(req: NextRequest) {
@@ -11,6 +11,16 @@ export async function POST(req: NextRequest) {
   try {
     const { date, checkInTime, checkOutTime, breakTotalMin, workPlace, note, reason } = await req.json()
     if (!date || !reason) return jsonError('日付と修正理由を入力してください', 400)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jsonError('日付はYYYY-MM-DD形式で入力してください', 400)
+    if (workPlace && !(WORK_PLACES as readonly string[]).includes(workPlace)) {
+      return jsonError('無効な勤務場所です', 400)
+    }
+    if (checkInTime && isNaN(new Date(checkInTime).getTime())) {
+      return jsonError('出勤時刻が不正です', 400)
+    }
+    if (checkOutTime && isNaN(new Date(checkOutTime).getTime())) {
+      return jsonError('退勤時刻が不正です', 400)
+    }
 
     // 該当日のAttendanceレコードを検索
     const attendance = await prisma.attendance.findUnique({
@@ -112,6 +122,21 @@ export async function POST(req: NextRequest) {
           updateData.workMin = workMin
           updateData.overtimeMin = overtimeMin
           updateData.status = 'done'
+
+          // OvertimeRecord を同期更新
+          const [yr, mo] = attendance.date.split('-').slice(0, 2).map(Number)
+          const diff = overtimeMin - (attendance.overtimeMin ?? 0)
+          if (diff !== 0) {
+            const existing = await tx.overtimeRecord.findUnique({
+              where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+            })
+            const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
+            await tx.overtimeRecord.upsert({
+              where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+              create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, overtimeMin) },
+              update: { totalMin: safeTotalMin },
+            })
+          }
         }
 
         await tx.attendance.update({ where: { id: attendance.id }, data: updateData })

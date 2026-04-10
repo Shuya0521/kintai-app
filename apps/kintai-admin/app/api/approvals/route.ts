@@ -53,23 +53,9 @@ export async function POST(req: NextRequest) {
     if (!approval) return jsonError('承認レコードが見つかりません', 404)
     if (approval.status !== 'pending') return jsonError('この申請は既に処理済みです', 400)
 
-    // Bug D: 有給承認前に残日数チェック
-    if (action === 'approve' && approval.leaveRequest) {
-      const deductDays = approval.leaveRequest.days
-      if (deductDays > 0) {
-        const requester = await prisma.user.findUnique({ where: { id: approval.requesterId } })
-        if (requester && requester.paidLeaveBalance < deductDays) {
-          return jsonError(
-            `有給残日数が不足しています（残${requester.paidLeaveBalance}日、必要${deductDays}日）`,
-            400
-          )
-        }
-      }
-    }
-
     const newStatus = action === 'approve' ? 'approved' : 'rejected'
 
-    await prisma.$transaction(async (tx) => {
+    const txResult = await prisma.$transaction(async (tx) => {
       await tx.approval.update({
         where: { id: approvalId },
         data: { status: newStatus, comment: comment || '', processedAt: new Date() },
@@ -83,9 +69,16 @@ export async function POST(req: NextRequest) {
         })
 
         if (action === 'approve') {
-          // Bug A: leaveRequest.days を使って実際の日数分控除
           const deductDays = approval.leaveRequest.days
           if (deductDays > 0) {
+            // TOCTOU対策: トランザクション内で残日数を再チェック
+            const current = await tx.user.findUnique({
+              where: { id: approval.requesterId },
+              select: { paidLeaveBalance: true },
+            })
+            if (!current || current.paidLeaveBalance < deductDays) {
+              throw new Error('INSUFFICIENT_BALANCE')
+            }
             await tx.user.update({
               where: { id: approval.requesterId },
               data: { paidLeaveBalance: { decrement: deductDays } },
@@ -94,7 +87,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Bug B: 打刻修正申請の処理
+      // 打刻修正申請の処理
       if (approval.stampCorrectionId && approval.stampCorrection) {
         const correction = approval.stampCorrection
         const correctionStatus = action === 'approve' ? 'applied' : 'rejected'
@@ -114,7 +107,6 @@ export async function POST(req: NextRequest) {
           if (correction.workPlace) updateData.workPlace = correction.workPlace
           if (correction.note !== null) updateData.note = correction.note
 
-          // workMin / overtimeMin を再計算
           const newCheckIn = correction.checkInTime ?? attendance.checkInTime
           const newCheckOut = correction.checkOutTime ?? attendance.checkOutTime
           if (newCheckIn && newCheckOut) {
@@ -130,6 +122,21 @@ export async function POST(req: NextRequest) {
             updateData.workMin = workMin
             updateData.overtimeMin = overtimeMin
             updateData.status = 'done'
+
+            // OvertimeRecord を同期更新
+            const [yr, mo] = attendance.date.split('-').slice(0, 2).map(Number)
+            const diff = overtimeMin - (attendance.overtimeMin ?? 0)
+            if (diff !== 0) {
+              const existing = await tx.overtimeRecord.findUnique({
+                where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+              })
+              const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
+              await tx.overtimeRecord.upsert({
+                where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
+                create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, overtimeMin) },
+                update: { totalMin: safeTotalMin },
+              })
+            }
           }
 
           await tx.attendance.update({
@@ -138,7 +145,16 @@ export async function POST(req: NextRequest) {
           })
         }
       }
+
+      return 'ok'
+    }).catch((e: Error) => {
+      if (e.message === 'INSUFFICIENT_BALANCE') return 'INSUFFICIENT_BALANCE'
+      throw e
     })
+
+    if (txResult === 'INSUFFICIENT_BALANCE') {
+      return jsonError('有給残日数が不足しています', 400)
+    }
 
     // メール通知（非同期、失敗してもレスポンスには影響しない）
     const requester = await prisma.user.findUnique({ where: { id: approval.requesterId } })
