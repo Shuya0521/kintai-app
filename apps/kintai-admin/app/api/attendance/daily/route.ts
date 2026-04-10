@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const me = await getCurrentAdmin()
   if (!me) return jsonError('権限がありません', 403)
 
+  try {
   const url = new URL(req.url)
   const month = url.searchParams.get('month') || getTodayStr().substring(0, 7)
   const department = url.searchParams.get('department')
@@ -39,4 +40,8 @@ export async function GET(req: NextRequest) {
   }))
 
   return jsonOk({ data, month })
+  } catch (error) {
+    console.error('GET daily error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }

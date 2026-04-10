@@ -12,18 +12,23 @@ export async function GET(
 
   const { id } = await params
 
-  const attendance = await prisma.attendance.findUnique({
-    where: { id },
-    include: {
-      user: {
-        select: { id: true, employeeNumber: true, lastName: true, firstName: true, department: true, role: true },
+  try {
+    const attendance = await prisma.attendance.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { id: true, employeeNumber: true, lastName: true, firstName: true, department: true, role: true },
+        },
       },
-    },
-  })
+    })
 
-  if (!attendance) return jsonError('勤怠レコードが見つかりません', 404)
+    if (!attendance) return jsonError('勤怠レコードが見つかりません', 404)
 
-  return jsonOk({ attendance })
+    return jsonOk({ attendance })
+  } catch (error) {
+    console.error('GET attendance/[id] error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }
 
 /** 管理者による勤怠直接修正 */

@@ -6,16 +6,21 @@ export async function GET() {
   const me = await getCurrentAdmin()
   if (!me) return jsonError('権限がありません', 403)
 
-  const settings = await prisma.setting.findMany()
-  const result: Record<string, unknown> = {}
-  for (const s of settings) {
-    try {
-      result[s.key] = JSON.parse(s.value)
-    } catch {
-      result[s.key] = s.value
+  try {
+    const settings = await prisma.setting.findMany()
+    const result: Record<string, unknown> = {}
+    for (const s of settings) {
+      try {
+        result[s.key] = JSON.parse(s.value)
+      } catch {
+        result[s.key] = s.value
+      }
     }
+    return jsonOk({ settings: result })
+  } catch (error) {
+    console.error('GET settings error:', error)
+    return jsonError('取得に失敗しました', 500)
   }
-  return jsonOk({ settings: result })
 }
 
 export async function POST(req: NextRequest) {

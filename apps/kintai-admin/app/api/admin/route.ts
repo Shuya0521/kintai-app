@@ -5,6 +5,8 @@ export async function GET() {
   const me = await getCurrentAdmin()
   if (!me) return jsonError('権限がありません', 403)
 
+  try {
+
   const today = getTodayStr()
   const now = new Date()
   const year = now.getFullYear()
@@ -53,4 +55,8 @@ export async function GET() {
       overtimeMin: r.overtimeMin,
     })),
   })
+  } catch (error) {
+    console.error('GET admin error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }

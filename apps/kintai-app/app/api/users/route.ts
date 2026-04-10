@@ -61,6 +61,9 @@ export async function PATCH(req: NextRequest) {
       return jsonError('無効な勤務形態です', 400)
     }
 
+    const existing = await prisma.user.findUnique({ where: { id: userId } })
+    if (!existing) return jsonError('ユーザーが見つかりません', 404)
+
     const user = await prisma.user.update({
       where: { id: userId },
       data,
