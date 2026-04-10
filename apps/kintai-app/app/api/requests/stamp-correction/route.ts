@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
+import { STANDARD_WORK_MIN } from '@kintai/shared'
 
 /** 打刻修正申請作成 */
 export async function POST(req: NextRequest) {
@@ -76,6 +77,25 @@ export async function POST(req: NextRequest) {
         if (correction.breakTotalMin !== null) updateData.breakTotalMin = correction.breakTotalMin
         if (correction.workPlace) updateData.workPlace = correction.workPlace
         if (correction.note !== null) updateData.note = correction.note
+
+        // Bug C: workMin / overtimeMin を再計算
+        const newCheckIn = correction.checkInTime ?? attendance.checkInTime
+        const newCheckOut = correction.checkOutTime ?? attendance.checkOutTime
+        if (newCheckIn && newCheckOut) {
+          const breakMin =
+            correction.breakTotalMin !== null
+              ? correction.breakTotalMin
+              : (attendance.breakTotalMin ?? 60)
+          const workMin = Math.max(
+            0,
+            Math.floor((newCheckOut.getTime() - newCheckIn.getTime()) / 60000) - breakMin
+          )
+          const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
+          updateData.workMin = workMin
+          updateData.overtimeMin = overtimeMin
+          updateData.status = 'done'
+        }
+
         await tx.attendance.update({ where: { id: attendance.id }, data: updateData })
       }
 
