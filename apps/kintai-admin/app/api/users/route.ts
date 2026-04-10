@@ -6,35 +6,40 @@ export async function GET(req: NextRequest) {
   const me = await getCurrentAdmin()
   if (!me) return jsonError('権限がありません', 403)
 
-  const url = new URL(req.url)
-  const status = url.searchParams.get('status')
-  const department = url.searchParams.get('department')
-  const search = url.searchParams.get('search')
+  try {
+    const url = new URL(req.url)
+    const status = url.searchParams.get('status')
+    const department = url.searchParams.get('department')
+    const search = url.searchParams.get('search')
 
-  const where: Record<string, unknown> = {}
-  if (status) where.status = status
-  if (department) where.department = department
-  if (search) {
-    where.OR = [
-      { lastName: { contains: search } },
-      { firstName: { contains: search } },
-      { email: { contains: search } },
-    ]
+    const where: Record<string, unknown> = {}
+    if (status) where.status = status
+    if (department) where.department = department
+    if (search) {
+      where.OR = [
+        { lastName: { contains: search } },
+        { firstName: { contains: search } },
+        { email: { contains: search } },
+      ]
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true, email: true, employeeNumber: true,
+        lastName: true, firstName: true,
+        lastNameKana: true, firstNameKana: true, phone: true,
+        role: true, department: true, workType: true,
+        hireDate: true, paidLeaveBalance: true, status: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return jsonOk({ users })
+  } catch (error) {
+    console.error('GET users error:', error)
+    return jsonError('取得に失敗しました', 500)
   }
-
-  const users = await prisma.user.findMany({
-    where,
-    select: {
-      id: true, email: true, employeeNumber: true,
-      lastName: true, firstName: true,
-      lastNameKana: true, firstNameKana: true, phone: true,
-      role: true, department: true, workType: true,
-      hireDate: true, paidLeaveBalance: true, status: true, createdAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  return jsonOk({ users })
 }
 
 export async function PATCH(req: NextRequest) {
