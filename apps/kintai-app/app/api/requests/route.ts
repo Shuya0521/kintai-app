@@ -36,7 +36,14 @@ export async function POST(req: NextRequest) {
       return jsonError('無効な申請種別です', 400)
     }
 
-    // Bug #6: 終了日が開始日より前の場合はエラー
+    // 日付フォーマット・存在チェック
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return jsonError('日付はYYYY-MM-DD形式で入力してください', 400)
+    }
+    if (isNaN(new Date(startDate).getTime()) || isNaN(new Date(endDate).getTime())) {
+      return jsonError('無効な日付です', 400)
+    }
     if (endDate < startDate) {
       return jsonError('終了日は開始日以降を指定してください', 400)
     }

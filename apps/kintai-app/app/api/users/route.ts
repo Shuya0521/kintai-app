@@ -45,7 +45,8 @@ export async function PATCH(req: NextRequest) {
     const { userId, ...updates } = await req.json()
     if (!userId) return jsonError('ユーザーIDが必要です', 400)
 
-    const allowedFields = ['lastName', 'firstName', 'lastNameKana', 'firstNameKana', 'phone', 'role', 'department', 'workType', 'paidLeaveBalance', 'status']
+    // 従業員アプリから変更可能なのはプロフィール情報のみ（role/paidLeaveBalance/statusは管理者アプリ専用）
+    const allowedFields = ['lastName', 'firstName', 'lastNameKana', 'firstNameKana', 'phone']
     const data: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (updates[key] !== undefined) data[key] = updates[key]
