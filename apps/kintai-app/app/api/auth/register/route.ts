@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         lastNameKana: lastNameKana || '',
         firstNameKana: firstNameKana || '',
         phone: phone || '',
-        role: position || '社員',
+        role: '社員', // #1: ロール昇格防止 — 登録時は常に社員固定
         department,
         workType: workType || '正社員',
         hireDate: new Date(joinDate),
