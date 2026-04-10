@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const me = await getCurrentAdmin()
   if (!me) return jsonError('権限がありません', 403)
 
+  try {
   const url = new URL(req.url)
   const month = url.searchParams.get('month') || getTodayStr().substring(0, 7)
   const department = url.searchParams.get('department')
@@ -32,13 +33,16 @@ export async function GET(req: NextRequest) {
     },
   })
 
+  // 月末日を正確に計算（2月・30日月対応）
+  const [monthY, monthM] = month.split('-').map(Number)
+  const monthEnd = `${month}-${String(new Date(monthY, monthM, 0).getDate()).padStart(2, '0')}`
+
   // 休暇申請も一括取得
   const leaveRequests = await prisma.leaveRequest.findMany({
     where: {
       userId: { in: users.map(u => u.id) },
       status: 'approved',
-      // Bug #7: 月をまたぐ有給も集計
-      startDate: { lte: `${month}-31` },
+      startDate: { lte: monthEnd },
       endDate: { gte: `${month}-01` },
     },
   })
@@ -78,4 +82,8 @@ export async function GET(req: NextRequest) {
   })
 
   return jsonOk({ summaries, month })
+  } catch (error) {
+    console.error('GET attendance error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }
