@@ -38,10 +38,35 @@ export function getGrantDaysByTenure(yearsOfService: number): number {
 
 /**
  * 入社日から勤続年数を計算
+ *
+ * 注意: ミリ秒差分を365.25で割る方式は、非うるう年の365日ちょうどの差が
+ * 365/365.25 ≒ 0.9993 となり、勤続「1年」の付与日に0.9993年と判定されて
+ * 付与日数が1段階下がるバグが発生する。
+ * → 年月日を直接比較する方式で整数年を正確に算出する。
  */
 export function getYearsOfService(hireDate: Date, asOf: Date = new Date()): number {
-  const diff = asOf.getTime() - hireDate.getTime()
-  return diff / (365.25 * 24 * 60 * 60 * 1000)
+  const hy = hireDate.getFullYear()
+  const hm = hireDate.getMonth()
+  const hd = hireDate.getDate()
+  const ay = asOf.getFullYear()
+  const am = asOf.getMonth()
+  const ad = asOf.getDate()
+
+  // 整数年: asOf が hireDate の「N年後の同月同日」以上なら N年
+  let years = ay - hy
+  if (am < hm || (am === hm && ad < hd)) {
+    years -= 1
+  }
+
+  // 端数（小数部）を加算して連続値として返す
+  // 端数は「N年後の入社記念日」から次の記念日までの割合
+  const anniversaryThisYear = new Date(hy + years, hm, hd)
+  const anniversaryNextYear = new Date(hy + years + 1, hm, hd)
+  const fraction =
+    (asOf.getTime() - anniversaryThisYear.getTime()) /
+    (anniversaryNextYear.getTime() - anniversaryThisYear.getTime())
+
+  return years + fraction
 }
 
 // ── 基準日・付与日計算 ──────────────────────────────────
@@ -460,7 +485,7 @@ export async function expirePaidLeaves(): Promise<{
   const expired: Array<{ userId: string; grantId: string; expiredDays: number }> = []
 
   for (const grant of grants) {
-    const remaining = grant.grantedDays + grant.carriedOverDays - grant.usedDays
+    const remaining = grant.grantedDays + grant.carriedOverDays - grant.usedDays - grant.expiredDays
     if (remaining <= 0) continue
 
     await prisma.$transaction([

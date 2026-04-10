@@ -64,6 +64,7 @@ export interface LeaveRequestRecord {
 export interface ApprovalRecord {
   id: string
   leaveRequestId: string | null
+  stampCorrectionId: string | null
   requestType: string
   requesterId: string
   approverId: string

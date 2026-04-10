@@ -8,7 +8,9 @@ import { apiGet } from '@/lib/api'
 interface MonthlySummary {
   workDays: number
   totalWorkHours: number
+  totalWorkMin: number
   totalOvertimeHours: number
+  totalOvertimeMin: number
   paidLeaveBalance: number
   paidLeaveTaken: number
 }
@@ -29,7 +31,9 @@ export default function MonthlyPage() {
   const [summary, setSummary] = useState<MonthlySummary>({
     workDays: 0,
     totalWorkHours: 0,
+    totalWorkMin: 0,
     totalOvertimeHours: 0,
+    totalOvertimeMin: 0,
     paidLeaveBalance: 0,
     paidLeaveTaken: 0,
   })
@@ -58,6 +62,11 @@ export default function MonthlyPage() {
   if (!user) return null
 
   const ot = summary.totalOvertimeHours || 0
+  const otMin = summary.totalOvertimeMin || 0
+  const otDisplay = otMin > 0 ? `${ot}h${otMin}m` : `${ot}h`
+  const workHDisplay = (summary.totalWorkMin || 0) > 0
+    ? `${summary.totalWorkHours || 0}h${summary.totalWorkMin}m`
+    : `${summary.totalWorkHours || 0}h`
   const pct = Math.min(100, ot / 60 * 100)
   const gaugeColor = ot >= 60 ? 'var(--red)' : ot >= 45 ? 'var(--orange)' : ot >= 36 ? 'var(--amber)' : 'var(--green)'
   const days = (records || []).map(r => r.workMin ? r.workMin / 60 : 0)
@@ -74,8 +83,8 @@ export default function MonthlyPage() {
           <div style={S.kpiGrid}>
             {[
               { label: '出勤日数',   value: String(summary.workDays || 0), unit: '日', color: 'var(--acc)' },
-              { label: '総実働時間', value: String(summary.totalWorkHours || 0), unit: 'h', color: 'var(--green)', sub: '所定 128h' },
-              { label: '残業時間',   value: String(ot), unit: 'h', color: gaugeColor,  sub: ot >= 45 ? '⚠ 警告' : ot >= 36 ? '⚠ 注意' : '正常' },
+              { label: '総実働時間', value: workHDisplay, unit: '', color: 'var(--green)', sub: '所定 128h' },
+              { label: '残業時間',   value: otDisplay, unit: '', color: gaugeColor,  sub: ot >= 45 ? '⚠ 警告' : ot >= 36 ? '⚠ 注意' : '正常' },
               { label: '有給残日数', value: String(summary.paidLeaveBalance || 0), unit: '日', color: 'var(--purple)', sub: '付与 20日' },
             ].map(k => (
               <div key={k.label} style={S.kpi}>
@@ -131,7 +140,7 @@ export default function MonthlyPage() {
             <div style={{ padding: '20px 24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--t2)', marginBottom: 8 }}>
                 <span>今月の残業時間</span>
-                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 600, color: gaugeColor }}>{ot}h / 60h</span>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontWeight: 600, color: gaugeColor }}>{otDisplay} / 60h</span>
               </div>
               <div style={{ height: 10, background: 'var(--s3)', borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: gaugeColor, borderRadius: 5, transition: 'width .8s ease' }} />

@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (!employeeNumber) {
       return jsonError('社員番号を入力してください', 400)
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate) || isNaN(new Date(joinDate).getTime())) {
+      return jsonError('入社日はYYYY-MM-DD形式の有効な日付を入力してください', 400)
+    }
 
     // パスワード強度チェック
     const pwCheck = validatePasswordStrength(password)

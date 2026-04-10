@@ -36,7 +36,7 @@ export default function MembersPage() {
     if (search) params.set('search', search)
     if (deptFilter) params.set('department', deptFilter)
     if (statusFilter) params.set('status', statusFilter)
-    fetch(`/api/users?${params}`).then(r => r.json()).then(d => setMembers(d.users || []))
+    fetch(`/api/users?${params}`).then(r => r.json()).then(d => setMembers(d.users || [])).catch(() => {})
   }, [search, deptFilter, statusFilter])
 
   useEffect(() => { loadMembers() }, [loadMembers])
