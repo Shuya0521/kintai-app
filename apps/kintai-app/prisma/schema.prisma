@@ -8,100 +8,261 @@ datasource db {
 }
 
 model User {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  passwordHash      String
-  lastName          String
-  firstName         String
-  lastNameKana      String   @default("")
-  firstNameKana     String   @default("")
-  phone             String   @default("")
-  avatarUrl         String   @default("")
-  role              String   // 統括部長|部長|参事|所長|課長|所長代理|主事|主査|リーダー|社員
-  department        String   // 営業部|工事部|リフォーム推進部|管理部
-  workType          String   @default("正社員") // 正社員|契約社員|パート・アルバイト|派遣社員|業務委託
-  hireDate          DateTime
-  paidLeaveBalance  Float    @default(20)
-  initialPassword   String   @default("")  // 承認後ログインカード用（初回ログインで消去）
-  status            String   @default("pending") // pending|active|retired
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  employeeNumber      String               @unique
+  passwordHash        String
+  lastName            String
+  firstName           String
+  lastNameKana        String               @default("")
+  firstNameKana       String               @default("")
+  phone               String               @default("")
+  avatarUrl           String               @default("")
+  role                String
+  department          String
+  workType            String               @default("正社員")
+  hireDate            DateTime
+  paidLeaveBalance    Float                @default(20)
+  mustChangePassword  Boolean              @default(true)
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  status              String               @default("pending")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  attendances       Attendance[]
-  leaveRequests     LeaveRequest[]
-  givenApprovals    Approval[] @relation("ApproverRelation")
+  givenApprovals      Approval[]           @relation("ApproverRelation")
+  requestedApprovals  Approval[]           @relation("Approval_requesterIdToUser")
+  delegationsAsDelegate  ApprovalDelegation[] @relation("ApprovalDelegation_delegateIdToUser")
+  delegationsAsDelegator ApprovalDelegation[] @relation("ApprovalDelegation_delegatorIdToUser")
+  attendances         Attendance[]
+  auditLogs           AuditLog[]
+  leaveRequests       LeaveRequest[]
+  missedStampAlerts   MissedStampAlert[]
+  overtimeRecords     OvertimeRecord[]
+  paidLeaveGrants     PaidLeaveGrant[]
+  passwordHistories   PasswordHistory[]
+  refreshTokens       RefreshToken[]
+  sessions            Session[]
+
+  @@index([department, role])
 }
 
 model Attendance {
-  id              String    @id @default(cuid())
+  id              String            @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date            String    // YYYY-MM-DD format
+  date            String
   checkInTime     DateTime?
   checkOutTime    DateTime?
   breakStartTime  DateTime?
-  breakTotalMin   Int       @default(0)
-  workMin         Int       @default(0)
-  overtimeMin     Int       @default(0)
-  workPlace       String    @default("office") // office|remote
-  status          String    @default("working") // working|breaking|done|holiday
-
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  breakTotalMin   Int               @default(0)
+  workMin         Int               @default(0)
+  overtimeMin     Int               @default(0)
+  lateMin         Int               @default(0)
+  earlyLeaveMin   Int               @default(0)
+  isHolidayWork   Boolean           @default(false)
+  workPlace       String            @default("office")
+  status          String            @default("none")
+  note            String            @default("")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stampCorrections StampCorrection[]
 
   @@unique([userId, date])
   @@index([userId, date])
+  @@index([date])
 }
 
 model LeaveRequest {
   id          String    @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        String    // vacation|half-am|half-pm|special
-  startDate   String    // YYYY-MM-DD
-  endDate     String    // YYYY-MM-DD
+  type        String
+  startDate   String
+  endDate     String
+  days        Float     @default(1)
   reason      String    @default("")
-  status      String    @default("pending") // pending|approved|rejected
+  status      String    @default("pending")
   createdAt   DateTime  @default(now())
   processedAt DateTime?
-
   approval    Approval?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+  @@index([startDate, endDate])
 }
 
 model Approval {
-  id              String    @id @default(cuid())
-  leaveRequestId  String?   @unique
-  leaveRequest    LeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
-  requestType     String    // leave|stamp_correction|overtime|user_registration
-  requesterId     String
-  approverId      String
-  approver        User      @relation("ApproverRelation", fields: [approverId], references: [id])
-  status          String    @default("pending") // pending|approved|rejected
-  comment         String    @default("")
-  createdAt       DateTime  @default(now())
-  processedAt     DateTime?
+  id                String           @id @default(cuid())
+  leaveRequestId    String?          @unique
+  stampCorrectionId String?          @unique
+  requestType       String
+  requesterId       String
+  approverId        String
+  status            String           @default("pending")
+  comment           String           @default("")
+  delegatedFrom     String?
+  escalatedFrom     String?
+  escalatedAt       DateTime?
+  dueAt             DateTime?
+  createdAt         DateTime         @default(now())
+  processedAt       DateTime?
+
+  approver          User             @relation("ApproverRelation", fields: [approverId], references: [id])
+  requester         User             @relation("Approval_requesterIdToUser", fields: [requesterId], references: [id])
+  stampCorrection   StampCorrection? @relation(fields: [stampCorrectionId], references: [id], onDelete: Cascade)
+  leaveRequest      LeaveRequest?    @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
 
   @@index([approverId, status])
   @@index([requestType, status])
+  @@index([status, dueAt])
 }
 
 model OvertimeRecord {
-  id              String   @id @default(cuid())
-  userId          String
-  year            Int
-  month           Int
-  totalMin        Int      @default(0)
-  warningTriggered Boolean @default(false)
-  limitExceeded    Boolean @default(false)
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String
+  year             Int
+  month            Int
+  totalMin         Int      @default(0)
+  warningTriggered Boolean  @default(false)
+  limitExceeded    Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, year, month])
 }
 
 model Setting {
   key       String   @id
-  value     String   // JSON string
+  value     String
   updatedAt DateTime @updatedAt
+}
+
+model ApprovalDelegation {
+  id          String   @id @default(cuid())
+  delegatorId String
+  delegateId  String
+  startDate   DateTime
+  endDate     DateTime
+  reason      String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  delegate    User     @relation("ApprovalDelegation_delegateIdToUser", fields: [delegateId], references: [id])
+  delegator   User     @relation("ApprovalDelegation_delegatorIdToUser", fields: [delegatorId], references: [id])
+
+  @@index([delegatorId, isActive])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  targetType String
+  targetId   String   @default("")
+  details    String   @default("")
+  ipAddress  String   @default("")
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model Holiday {
+  date String @id
+  name String
+  year Int
+
+  @@index([year])
+}
+
+model MissedStampAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String
+  alertType String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model PaidLeaveGrant {
+  id              String   @id @default(cuid())
+  userId          String
+  grantDate       DateTime
+  grantedDays     Float
+  usedDays        Float    @default(0)
+  carriedOverDays Float    @default(0)
+  expiredDays     Float    @default(0)
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([userId])
+}
+
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenFamily String
+  tokenHash   String   @unique
+  isRevoked   Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenFamily])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenFamily  String
+  deviceInfo   String   @default("")
+  ipAddress    String   @default("")
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StampCorrection {
+  id            String     @id @default(cuid())
+  attendanceId  String
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  breakTotalMin Int?
+  workPlace     String?
+  note          String?
+  reason        String
+  status        String     @default("pending")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  approval      Approval?
+  attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@index([attendanceId, status])
 }
