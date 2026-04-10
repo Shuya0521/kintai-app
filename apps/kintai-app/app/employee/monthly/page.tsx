@@ -69,15 +69,6 @@ export default function MonthlyPage() {
     : `${summary.totalWorkHours || 0}h`
   const pct = Math.min(100, ot / 60 * 100)
   const gaugeColor = ot >= 60 ? 'var(--red)' : ot >= 45 ? 'var(--orange)' : ot >= 36 ? 'var(--amber)' : 'var(--green)'
-  // 月の全日分のバーデータを生成（1日〜末日）
-  const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const dateStr = `${monthStr}-${String(i + 1).padStart(2, '0')}`
-    const rec = (records || []).find((r: { date: string; workMin: number }) => r.date === dateStr)
-    return rec ? rec.workMin / 60 : 0
-  })
 
   return (
     <div style={S.app}>
@@ -159,24 +150,6 @@ export default function MonthlyPage() {
             </div>
           </div>
 
-          {/* 日次バーチャート */}
-          <div style={S.card}>
-            <div style={S.cardHeader}><span style={S.cardTitle}>日次実働バーチャート</span></div>
-            <div style={{ padding: 20, overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120, minWidth: 400 }}>
-                {days.map((h, i) => {
-                  const barPct = h / 12 * 100
-                  const color = h === 0 ? 'var(--s3)' : h > 8 ? 'var(--orange)' : 'var(--acc)'
-                  return (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
-                      <div style={{ width: '100%', height: `${Math.max(2, barPct)}%`, background: color, borderRadius: '4px 4px 0 0' }} title={h ? `${h}h` : '-'} />
-                      <div style={{ fontSize: 9, color: 'var(--t3)', fontFamily: 'DM Mono, monospace' }}>{i + 1}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     </div>
