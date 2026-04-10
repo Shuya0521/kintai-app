@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
-import { STANDARD_WORK_MIN, WORK_PLACES } from '@kintai/shared'
+import { WORK_PLACES, recalculateAttendanceMinutes } from '@kintai/shared'
 
 /** 打刻修正申請作成 */
 export async function POST(req: NextRequest) {
@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
     }
     if (checkOutTime && isNaN(new Date(checkOutTime).getTime())) {
       return jsonError('退勤時刻が不正です', 400)
+    }
+    if (breakTotalMin !== undefined && breakTotalMin !== null) {
+      if (typeof breakTotalMin !== 'number' || breakTotalMin < 0 || breakTotalMin > 24 * 60) {
+        return jsonError('休憩時間が不正です（0〜1440分の範囲で入力してください）', 400)
+      }
     }
 
     // 該当日のAttendanceレコードを検索
@@ -106,7 +111,7 @@ export async function POST(req: NextRequest) {
         if (correction.workPlace) updateData.workPlace = correction.workPlace
         if (correction.note !== null) updateData.note = correction.note
 
-        // Bug C: workMin / overtimeMin を再計算
+        // workMin / overtimeMin / lateMin / earlyLeaveMin を再計算
         const newCheckIn = correction.checkInTime ?? attendance.checkInTime
         const newCheckOut = correction.checkOutTime ?? attendance.checkOutTime
         if (newCheckIn && newCheckOut) {
@@ -114,18 +119,21 @@ export async function POST(req: NextRequest) {
             correction.breakTotalMin !== null
               ? correction.breakTotalMin
               : (attendance.breakTotalMin ?? 60)
-          const workMin = Math.max(
-            0,
-            Math.floor((newCheckOut.getTime() - newCheckIn.getTime()) / 60000) - breakMin
-          )
-          const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
-          updateData.workMin = workMin
-          updateData.overtimeMin = overtimeMin
+          const calc = recalculateAttendanceMinutes({
+            checkInTime: newCheckIn,
+            checkOutTime: newCheckOut,
+            breakTotalMin: breakMin,
+            isHolidayWork: attendance.isHolidayWork,
+          })
+          updateData.workMin = calc.workMin
+          updateData.overtimeMin = calc.overtimeMin
+          updateData.lateMin = calc.lateMin
+          updateData.earlyLeaveMin = calc.earlyLeaveMin
           updateData.status = 'done'
 
           // OvertimeRecord を同期更新
           const [yr, mo] = attendance.date.split('-').slice(0, 2).map(Number)
-          const diff = overtimeMin - (attendance.overtimeMin ?? 0)
+          const diff = calc.overtimeMin - (attendance.overtimeMin ?? 0)
           if (diff !== 0) {
             const existing = await tx.overtimeRecord.findUnique({
               where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
@@ -133,7 +141,7 @@ export async function POST(req: NextRequest) {
             const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
             await tx.overtimeRecord.upsert({
               where: { userId_year_month: { userId: attendance.userId, year: yr, month: mo } },
-              create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, overtimeMin) },
+              create: { userId: attendance.userId, year: yr, month: mo, totalMin: Math.max(0, calc.overtimeMin) },
               update: { totalMin: safeTotalMin },
             })
           }

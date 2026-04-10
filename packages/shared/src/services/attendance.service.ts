@@ -79,13 +79,17 @@ export function recalculateAttendanceMinutes(input: AttendanceCalcInput): Attend
   }
 
   // #7: 早退（JST基準で終業時刻以前の退勤）
+  // 深夜退勤（日跨ぎ）を考慮: 残業している場合は早退ではない
   let earlyLeaveMin = 0
-  if (!isHolidayWork) {
+  if (!isHolidayWork && overtimeMin === 0) {
     const outHour = getJSTHours(checkOutTime)
     const outMin = getJSTMinutes(checkOutTime)
     const outTotalMin = outHour * 60 + outMin
     const endTotalMin = BUSINESS_END_HOUR_JST * 60 + BUSINESS_END_MIN
-    if (outTotalMin < endTotalMin) {
+    // 深夜0時台（日跨ぎ退勤）は早退ではない
+    const inHour = getJSTHours(checkInTime)
+    const inTotalMin = inHour * 60 + getJSTMinutes(checkInTime)
+    if (outTotalMin < endTotalMin && outTotalMin >= inTotalMin) {
       earlyLeaveMin = endTotalMin - outTotalMin
     }
   }
