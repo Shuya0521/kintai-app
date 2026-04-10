@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       },
     })
     if (!approval) return jsonError('承認レコードが見つかりません', 404)
-    if (approval.status !== 'pending') return jsonError('この申請は既に処理済みです', 400)
+    if (approval.status !== 'pending' && approval.status !== 'escalated') return jsonError('この申請は既に処理済みです', 400)
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected'
 

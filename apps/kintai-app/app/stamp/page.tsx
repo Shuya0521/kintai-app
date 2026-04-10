@@ -120,25 +120,28 @@ export default function StampPage() {
     try {
       let action: string
       let workPlace: 'office' | 'remote' = 'office'
+      let toastMsg = ''
+      let toastIcon = ''
       switch (type) {
         case 'in':
           action = 'in'
           workPlace = 'office'
-          showToast(`出勤打刻しました　${time}`, '🏢')
+          toastMsg = `出勤打刻しました　${time}`; toastIcon = '🏢'
           break
         case 'remote':
           action = 'in'
           workPlace = 'remote'
-          showToast(`在宅勤務を開始しました　${time}`, '🏠')
+          toastMsg = `在宅勤務を開始しました　${time}`; toastIcon = '🏠'
           break
         case 'out':
           action = 'out'
-          showToast(`退勤打刻しました　${time}`, '🔴')
+          toastMsg = `退勤打刻しました　${time}`; toastIcon = '🔴'
           break
         default:
           return
       }
       const response = await apiPost('/api/attendance', { action, workPlace })
+      showToast(toastMsg, toastIcon) // API成功後に表示
       const att = response.attendance
       if (att) {
         setStamp(s => ({

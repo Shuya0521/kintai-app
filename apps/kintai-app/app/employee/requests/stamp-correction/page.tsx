@@ -110,6 +110,11 @@ export default function StampCorrectionPage() {
       setAttendance(null)
       setLookupDone(false)
       setReason('')
+      setCheckIn('')
+      setCheckOut('')
+      setBreakMin('')
+      setWorkPlace('')
+      setNote('')
       loadHistory()
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : '申請に失敗しました')
