@@ -161,7 +161,8 @@ export async function POST(req: NextRequest) {
     return jsonOk({ request, message: '申請を送信しました' }, 201)
   } catch (error) {
     console.error('Request error:', error)
-    return jsonError('申請に失敗しました', 500)
+    const detail = error instanceof Error ? error.message : String(error)
+    return jsonError(`申請に失敗しました: ${detail}`, 500)
   }
 }
 
