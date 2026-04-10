@@ -128,10 +128,14 @@ export async function PATCH(
       const newOt = calc.overtimeMin
       const diff = newOt - oldOt
       if (diff !== 0) {
+        const existing = await prisma.overtimeRecord.findUnique({
+          where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
+        })
+        const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
         await prisma.overtimeRecord.upsert({
           where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
           create: { userId: current.userId, year: yr, month: mo, totalMin: Math.max(0, newOt) },
-          update: { totalMin: { increment: diff } },
+          update: { totalMin: safeTotalMin },
         })
       }
     }

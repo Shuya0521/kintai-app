@@ -7,6 +7,7 @@ import { LEAVE_TYPE_LABELS } from '@kintai/shared'
 // 日数を計算（土日除外）
 function calcDays(type: string, startDate: string, endDate: string): number {
   if (type === 'half-am' || type === 'half-pm') return 0.5
+  if (type === 'special') return 0
   const [sy, sm, sd] = startDate.split('-').map(Number)
   const [ey, em, ed] = endDate.split('-').map(Number)
   const start = new Date(sy, sm - 1, sd)

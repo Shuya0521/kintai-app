@@ -44,6 +44,7 @@ export default function ApprovalsPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.error || '処理に失敗しました')
+        return
       }
       loadApprovals()
     } catch {

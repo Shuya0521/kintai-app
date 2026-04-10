@@ -15,7 +15,7 @@ export interface TokenPayload {
   type: 'access' | 'refresh'
 }
 
-/** アクセストークン生成（有効期限15分） */
+/** アクセストークン生成（有効期限1日） */
 export function createAccessToken(userId: string, role?: string): string {
   return jwt.sign({ userId, role: role || '', type: 'access' } satisfies TokenPayload, getJwtSecret(), {
     expiresIn: ACCESS_TOKEN_EXPIRY,

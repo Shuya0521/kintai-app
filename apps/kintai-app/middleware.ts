@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken, createAccessToken } from '@kintai/shared'
+import { verifyToken } from '@kintai/shared'
 
 /**
  * 社員用アプリ — 認証ミドルウェア
