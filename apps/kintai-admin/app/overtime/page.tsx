@@ -43,9 +43,11 @@ export default function OvertimePage() {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/admin?month=${month}`).then(r => r.json()).then(d => {
-      const members: OvertimeRecord[] = (d.members || [])
-        .map((m: OvertimeRecord) => ({ id: m.id, name: m.name, dept: m.dept, overtimeMin: m.overtimeMin }))
+    fetch(`/api/attendance?month=${month}`).then(r => r.json()).then(d => {
+      // 月次勤怠サマリーから残業データを取得（/api/admin は月パラメータ未対応のため）
+      const members: OvertimeRecord[] = (d.summaries || [])
+        .map((m: { employeeNumber: string; name: string; department: string; overtimeMin: number }) =>
+          ({ id: m.employeeNumber, name: m.name, dept: m.department, overtimeMin: m.overtimeMin }))
         .sort((a: OvertimeRecord, b: OvertimeRecord) => b.overtimeMin - a.overtimeMin)
       setRecords(members)
     }).catch(() => {

@@ -161,7 +161,13 @@ export default function RequestsPage() {
                 loadHistory()
                 // refresh paid leave balance
                 apiGet('/api/auth/me').then(d => setPaidLeave(d.user?.paidLeaveBalance ?? 0)).catch(() => {})
+                // フォームリセット
                 setReason('')
+                setSelected(0)
+                const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1)
+                const tmrwStr = tmrw.toISOString().slice(0, 10)
+                setStartDate(tmrwStr)
+                setEndDate(tmrwStr)
               } catch (e: unknown) {
                 showToastMsg(e instanceof Error ? e.message : '申請に失敗しました', 'error')
               } finally {
