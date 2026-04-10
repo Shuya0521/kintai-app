@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
   const me = await getCurrentUser()
   if (!me) return jsonError('認証が必要です', 401)
 
+  try {
   const url = new URL(req.url)
   const range = url.searchParams.get('range') || 'today'
 
@@ -152,4 +153,8 @@ export async function GET(req: NextRequest) {
   }
 
   return jsonError('無効なrangeパラメータです', 400)
+  } catch (error) {
+    console.error('GET attendance error:', error)
+    return jsonError('取得に失敗しました', 500)
+  }
 }

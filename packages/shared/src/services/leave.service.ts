@@ -343,7 +343,7 @@ export async function grantAnnualPaidLeave(): Promise<{
           userId: user.id,
           grantDate: {
             gte: new Date(todayStr + 'T00:00:00Z'),
-            lt: new Date(todayStr + 'T23:59:59Z'),
+            lt: new Date(todayStr + 'T23:59:59.999Z'),
           },
         },
       })

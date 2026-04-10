@@ -158,12 +158,12 @@ export default function StampPage() {
     }
   }
 
-  // ── 実働時間計算 ──────────────────────────────────
-  const deemedBreak = 60 // みなし休憩控除（分）
+  // ── 実働時間計算（APIの休憩実績を使用）──────────────────
+  const breakMin = stamp.breakTotal ?? 0
   const workMin = stamp.inTime
     ? stamp.outTime
-      ? Math.round((stamp.outTime - stamp.inTime) / 60000) - deemedBreak
-      : Math.round((Date.now() - stamp.inTime) / 60000) - deemedBreak
+      ? Math.round((stamp.outTime - stamp.inTime) / 60000) - breakMin
+      : Math.round((Date.now() - stamp.inTime) / 60000)
     : 0
   const wh = Math.floor(Math.max(0, workMin) / 60)
   const wm = Math.max(0, workMin) % 60
@@ -246,7 +246,7 @@ export default function StampPage() {
               <LogRow label="勤務場所" value={stamp.inTime ? (stamp.workType === 'remote' ? '🏠 在宅勤務' : '🏢 出社') : '—'} color={stamp.inTime ? (stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)') : 'var(--t3)'} />
               <LogRow label="出勤時刻" value={fmt(stamp.inTime)}  color="var(--green)" />
               <LogRow label="退勤時刻" value={fmt(stamp.outTime)} color="var(--red)"   />
-              <LogRow label="休憩時間" value={stamp.inTime ? `${deemedBreak}分（みなし）` : '—'} />
+              <LogRow label="休憩時間" value={stamp.inTime ? `${breakMin}分` : '—'} />
               <LogRow label="実働時間" value={stamp.inTime ? `${wh}h ${wm}m` : '—'} color="var(--acc)" last />
             </div>
           </div>

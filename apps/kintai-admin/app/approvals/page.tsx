@@ -16,6 +16,7 @@ interface ApprovalItem {
   requester?: { lastName: string; firstName: string; department: string; role: string }
   approver?: { lastName: string; firstName: string }
   leaveRequest?: { type: string; startDate: string; endDate: string; reason: string }
+  stampCorrection?: { reason: string; attendance?: { date: string } }
 }
 
 export default function ApprovalsPage() {
@@ -119,6 +120,13 @@ export default function ApprovalsPage() {
                   {LEAVE_TYPE_LABELS[a.leaveRequest.type] || a.leaveRequest.type}: {formatDateJP(a.leaveRequest.startDate)}
                   {a.leaveRequest.startDate !== a.leaveRequest.endDate && ` 〜 ${formatDateJP(a.leaveRequest.endDate)}`}
                   {a.leaveRequest.reason && <span style={{ color: 'var(--t2)' }}> ({a.leaveRequest.reason})</span>}
+                </div>
+              )}
+
+              {a.requestType === 'stamp_correction' && a.stampCorrection && (
+                <div style={{ fontSize: 13, marginBottom: 8 }}>
+                  打刻修正: {a.stampCorrection.attendance?.date ? formatDateJP(a.stampCorrection.attendance.date) : ''}
+                  <span style={{ color: 'var(--t2)' }}> ({a.stampCorrection.reason || ''})</span>
                 </div>
               )}
 

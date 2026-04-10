@@ -160,7 +160,7 @@ export default function RequestsPage() {
                 showToastMsg('有給申請を送信しました。上長の承認をお待ちください', 'success')
                 loadHistory()
                 // refresh paid leave balance
-                apiGet('/api/auth/me').then(d => setPaidLeave(d.user.paidLeaveBalance ?? 0)).catch(() => {})
+                apiGet('/api/auth/me').then(d => setPaidLeave(d.user?.paidLeaveBalance ?? 0)).catch(() => {})
                 setReason('')
               } catch (e: unknown) {
                 showToastMsg(e instanceof Error ? e.message : '申請に失敗しました', 'error')

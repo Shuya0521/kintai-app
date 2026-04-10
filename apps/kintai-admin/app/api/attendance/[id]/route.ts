@@ -84,10 +84,33 @@ export async function PATCH(
       updateData.status = 'done'
     }
 
-    // 更新実行
-    const updated = await prisma.attendance.update({
-      where: { id },
-      data: updateData,
+    // 更新実行（トランザクションでAttendance + OvertimeRecord を原子的に処理）
+    const updated = await prisma.$transaction(async (tx) => {
+      const upd = await tx.attendance.update({
+        where: { id },
+        data: updateData,
+      })
+
+      // OvertimeRecord 同期更新
+      if (current.date) {
+        const [yr, mo] = current.date.split('-').slice(0, 2).map(Number)
+        const oldOt = current.overtimeMin || 0
+        const newOt = calc.overtimeMin
+        const diff = newOt - oldOt
+        if (diff !== 0) {
+          const existing = await tx.overtimeRecord.findUnique({
+            where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
+          })
+          const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
+          await tx.overtimeRecord.upsert({
+            where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
+            create: { userId: current.userId, year: yr, month: mo, totalMin: Math.max(0, newOt) },
+            update: { totalMin: safeTotalMin },
+          })
+        }
+      }
+
+      return upd
     })
 
     // 監査ログ記録
@@ -121,24 +144,6 @@ export async function PATCH(
       ipAddress: getClientIp(req),
     })
 
-    // Bug #10: OvertimeRecord も同期更新
-    if (current.date) {
-      const [yr, mo] = current.date.split('-').slice(0, 2).map(Number)
-      const oldOt = current.overtimeMin || 0
-      const newOt = calc.overtimeMin
-      const diff = newOt - oldOt
-      if (diff !== 0) {
-        const existing = await prisma.overtimeRecord.findUnique({
-          where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
-        })
-        const safeTotalMin = Math.max(0, (existing?.totalMin ?? 0) + diff)
-        await prisma.overtimeRecord.upsert({
-          where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
-          create: { userId: current.userId, year: yr, month: mo, totalMin: Math.max(0, newOt) },
-          update: { totalMin: safeTotalMin },
-        })
-      }
-    }
 
     return jsonOk({ attendance: updated, message: '勤怠を修正しました' })
   } catch (error) {

@@ -18,7 +18,7 @@ interface AttendanceRecord {
 export default function DailyPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ name: string } | null>(null)
-  const [logs, setLogs] = useState<{ date: string; in: string; out: string; work: string; ot: string; st: string; place: string }[]>([])
+  const [logs, setLogs] = useState<{ date: string; rawDate: string; in: string; out: string; work: string; ot: string; st: string; place: string }[]>([])
   const [toast, setToast] = useState('')
 
   useEffect(() => {
@@ -43,6 +43,7 @@ export default function DailyPage() {
           const otM = r.overtimeMin % 60
           return {
             date: dateStr,
+            rawDate: r.date, // YYYY-MM-DD形式を保持
             in: inTime,
             out: outTime,
             work: r.workMin > 0 ? `${workH}h${workM}m` : '—',
@@ -97,7 +98,7 @@ export default function DailyPage() {
                       <td style={{ ...S.td, fontFamily: 'DM Mono, monospace', color: l.ot === '—' || l.ot === '0h00m' ? 'var(--t3)' : 'var(--amber)' }}>{l.ot}</td>
                       <td style={S.td}><StatusBadge st={l.st} /></td>
                       <td style={S.td}>
-                        <span style={S.amendLink} onClick={() => router.push(`/employee/requests/stamp-correction?date=${l.date}`)}>修正申請</span>
+                        <span style={S.amendLink} onClick={() => router.push(`/employee/requests/stamp-correction?date=${l.rawDate}`)}>修正申請</span>
                       </td>
                     </tr>
                   ))}

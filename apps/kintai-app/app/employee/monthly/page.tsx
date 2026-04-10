@@ -73,7 +73,7 @@ export default function MonthlyPage() {
           {/* KPI */}
           <div style={S.kpiGrid}>
             {[
-              { label: '出勤日数',   value: String(summary.workDays || 0), unit: '日', color: 'var(--acc)',    sub: '前月比 +1日' },
+              { label: '出勤日数',   value: String(summary.workDays || 0), unit: '日', color: 'var(--acc)' },
               { label: '総実働時間', value: String(summary.totalWorkHours || 0), unit: 'h', color: 'var(--green)', sub: '所定 128h' },
               { label: '残業時間',   value: String(ot), unit: 'h', color: gaugeColor,  sub: ot >= 45 ? '⚠ 警告' : ot >= 36 ? '⚠ 注意' : '正常' },
               { label: '有給残日数', value: String(summary.paidLeaveBalance || 0), unit: '日', color: 'var(--purple)', sub: '付与 20日' },

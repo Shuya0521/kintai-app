@@ -119,7 +119,8 @@ async function checkMissedStamps(date: string): Promise<string[]> {
   const alerts: string[] = []
 
   // 土日チェック（土日はスキップ）
-  const dayOfWeek = new Date(date).getDay()
+  const [y, m, d] = date.split('-').map(Number)
+  const dayOfWeek = new Date(y, m - 1, d).getDay()
   if (dayOfWeek === 0 || dayOfWeek === 6) {
     return alerts
   }
@@ -286,12 +287,12 @@ async function finalizeMonthlyOvertime(year: number, month: number): Promise<voi
         month,
         totalMin,
         warningTriggered: totalMin >= 45 * 60,
-        limitExceeded: totalMin >= 80 * 60,
+        limitExceeded: totalMin >= 100 * 60, // 法令基準の月100h
       },
       update: {
         totalMin,
         warningTriggered: totalMin >= 45 * 60,
-        limitExceeded: totalMin >= 80 * 60,
+        limitExceeded: totalMin >= 100 * 60, // 法令基準の月100h
       },
     })
 
