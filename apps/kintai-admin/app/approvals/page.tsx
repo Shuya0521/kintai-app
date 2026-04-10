@@ -36,12 +36,18 @@ export default function ApprovalsPage() {
   const handleAction = async (approvalId: string, action: 'approve' | 'reject') => {
     setProcessing(approvalId)
     try {
-      await fetch('/api/approvals', {
+      const res = await fetch('/api/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approvalId, action }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || '処理に失敗しました')
+      }
       loadApprovals()
+    } catch {
+      alert('通信エラーが発生しました')
     } finally {
       setProcessing(null)
     }

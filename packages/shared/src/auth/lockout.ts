@@ -31,9 +31,11 @@ export function checkLockout(failedAttempts: number, lockedUntil: Date | null): 
 /** 失敗回数からロック期限を計算 */
 export function calculateLockout(failedAttempts: number): LockoutResult {
   if (failedAttempts >= LOCKOUT_ATTEMPTS_3) {
+    // Bug #14: 遠い未来のlockedUntilを設定して確実にロック
     return {
       locked: true,
       requiresAdminUnlock: true,
+      lockedUntil: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000),
       message: 'アカウントがロックされました。管理者に連絡してください。',
     }
   }

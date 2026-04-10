@@ -93,7 +93,7 @@ export const LOCKOUT_DURATION_2 = 60   // 分
 export const LOCKOUT_ATTEMPTS_3 = 15   // 15回失敗 → 管理者手動解除
 
 // ── JWT設定 ──────────────────────────────────────
-export const ACCESS_TOKEN_EXPIRY = '7d'
+export const ACCESS_TOKEN_EXPIRY = '1d'
 export const REFRESH_TOKEN_EXPIRY_DAYS = 14
 export const MAX_SESSIONS_PER_USER = 3
 

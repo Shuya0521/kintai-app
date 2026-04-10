@@ -271,7 +271,7 @@ export default function StampPage() {
 function StampBtn({ icon, label, color, disabled, loading, onClick }: {
   icon: string; label: string; color: string; disabled: boolean; loading?: boolean; onClick: () => void
 }) {
-  const isActive = !disabled && loading
+  const isActive = !!loading
   return (
     <button
       onClick={onClick}

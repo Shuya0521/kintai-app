@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
       // Bug #5: 負の workMin を防ぐ
       const workMin = Math.max(0, Math.floor((now.getTime() - inTime) / 60000) - breakMin)
       const overtimeMin = Math.max(0, workMin - STANDARD_WORK_MIN)
-      const year = now.getFullYear()
-      const month = now.getMonth() + 1
+      // Bug #5: attendance.date から year/month を取得（UTCズレ防止）
+      const [year, month] = record!.date.split('-').slice(0, 2).map(Number)
 
       // トランザクションで勤怠更新 + 残業記録を原子的に処理
       record = await prisma.$transaction(async (tx) => {
@@ -118,7 +118,9 @@ export async function GET(req: NextRequest) {
           userId: me.id,
           status: 'approved',
           type: { in: ['vacation', 'half-am', 'half-pm'] },
-          startDate: { startsWith: month }, // Bug #4: 月フィルタを追加
+          // Bug #7: 月をまたぐ有給も正しく集計
+          startDate: { lte: `${month}-31` },
+          endDate: { gte: `${month}-01` },
         },
       }),
     ])

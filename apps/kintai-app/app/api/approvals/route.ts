@@ -48,6 +48,11 @@ export async function POST(req: NextRequest) {
     if (!approval) return jsonError('承認レコードが見つかりません', 404)
     if (approval.status !== 'pending') return jsonError('この申請は既に処理済みです', 400)
 
+    // Bug #2: 自分宛ての承認のみ処理可能
+    if (approval.approverId !== me.id) {
+      return jsonError('この申請の承認権限がありません', 403)
+    }
+
     // Bug D: 有給承認前に残日数チェック
     if (action === 'approve' && approval.leaveRequest) {
       const deductDays = approval.leaveRequest.days

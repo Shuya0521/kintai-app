@@ -4,12 +4,21 @@ import { getCurrentUser, getApproverRoles, jsonOk, jsonError } from '@/lib/auth'
 import { sendMail, approvalRequestEmail } from '@kintai/shared/src/services/email.service'
 import { LEAVE_TYPE_LABELS } from '@kintai/shared'
 
-// Bug #1: startDate/endDate から日数を計算
+// 日数を計算（土日除外）
 function calcDays(type: string, startDate: string, endDate: string): number {
   if (type === 'half-am' || type === 'half-pm') return 0.5
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const start = new Date(sy, sm - 1, sd)
+  const end = new Date(ey, em - 1, ed)
+  let count = 0
+  const d = new Date(start)
+  while (d <= end) {
+    const dow = d.getDay()
+    if (dow !== 0 && dow !== 6) count++ // 土日除外
+    d.setDate(d.getDate() + 1)
+  }
+  return count || 1
 }
 
 export async function POST(req: NextRequest) {
@@ -28,6 +37,13 @@ export async function POST(req: NextRequest) {
     }
 
     const days = calcDays(type, startDate, endDate)
+
+    // Bug #4: 申請時に残日数チェック
+    if (type === 'vacation' || type === 'half-am' || type === 'half-pm') {
+      if (me.paidLeaveBalance < days) {
+        return jsonError(`有給残日数が不足しています（残${me.paidLeaveBalance}日、必要${days}日）`, 400)
+      }
+    }
 
     // Create leave request
     const request = await prisma.leaveRequest.create({
@@ -51,11 +67,9 @@ export async function POST(req: NextRequest) {
         where: { id: request.id },
         data: { status: 'approved', processedAt: new Date() },
       })
-      // Bug #3: paidLeaveBalance デクリメント
-      if (type === 'vacation') {
+      // Bug #12: days > 0 で統一判定
+      if (days > 0) {
         await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
-      } else if (type === 'half-am' || type === 'half-pm') {
-        await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: 0.5 } } })
       }
       // Bug #2: updated を返す
       return jsonOk({ success: true, request: updated, autoApproved: true })
@@ -108,11 +122,9 @@ export async function POST(req: NextRequest) {
         data: { status: 'approved', processedAt: new Date() },
       })
 
-      // Deduct paid leave
-      if (type === 'vacation') {
+      // Deduct paid leave（days > 0 で統一判定）
+      if (days > 0) {
         await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: days } } })
-      } else if (type === 'half-am' || type === 'half-pm') {
-        await prisma.user.update({ where: { id: me.id }, data: { paidLeaveBalance: { decrement: 0.5 } } })
       }
 
       return jsonOk({ request: updated, message: '申請を送信しました（自動承認）' }, 201)

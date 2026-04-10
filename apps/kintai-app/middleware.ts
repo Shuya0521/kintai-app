@@ -45,27 +45,7 @@ export function middleware(req: NextRequest) {
 
   const payload = verifyToken(token)
   if (!payload) {
-    // トークンが失効している場合、ペイロードをデコードして自動リフレッシュを試みる
-    try {
-      const [, rawPayload] = token.split('.')
-      const decoded = JSON.parse(Buffer.from(rawPayload, 'base64url').toString())
-      if (decoded?.userId && decoded?.type === 'access') {
-        // ユーザーIDが取得できればトークンを再発行してリクエストを続行
-        const newToken = createAccessToken(decoded.userId, decoded.role)
-        const response = NextResponse.next()
-        response.cookies.set('kintai_token', newToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7,
-          path: '/',
-        })
-        return response
-      }
-    } catch {
-      // デコード失敗 → 無効なトークン
-    }
-
+    // Bug #1 修正: 無検証リフレッシュを削除。トークン無効時はログインへ
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'セッションが切れました。再ログインしてください。', code: 'TOKEN_EXPIRED' }, { status: 401 })
     }

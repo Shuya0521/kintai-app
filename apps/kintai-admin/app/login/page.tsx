@@ -12,11 +12,13 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('kintai_admin_email')
-    if (saved) {
-      setEmail(saved)
-      setRemember(true)
-    }
+    try {
+      const saved = localStorage.getItem('kintai_admin_email')
+      if (saved) {
+        setEmail(saved)
+        setRemember(true)
+      }
+    } catch { /* private browsing */ }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

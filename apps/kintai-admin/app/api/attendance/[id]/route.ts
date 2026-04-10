@@ -49,15 +49,22 @@ export async function PATCH(
     // 更新データを構築
     const updateData: Record<string, unknown> = {}
 
-    if (checkInTime !== undefined) updateData.checkInTime = checkInTime ? new Date(checkInTime) : null
-    if (checkOutTime !== undefined) updateData.checkOutTime = checkOutTime ? new Date(checkOutTime) : null
+    // Bug #6: TZ未指定の日時文字列にJSTオフセットを付与
+    const toJSTDate = (s: string) => {
+      if (!s) return null
+      return s.includes('Z') || s.includes('+') || s.includes('T') && s.match(/[+-]\d{2}:\d{2}$/)
+        ? new Date(s)
+        : new Date(s + '+09:00')
+    }
+    if (checkInTime !== undefined) updateData.checkInTime = checkInTime ? toJSTDate(checkInTime) : null
+    if (checkOutTime !== undefined) updateData.checkOutTime = checkOutTime ? toJSTDate(checkOutTime) : null
     if (breakTotalMin !== undefined) updateData.breakTotalMin = breakTotalMin
     if (workPlace !== undefined) updateData.workPlace = workPlace
     if (note !== undefined) updateData.note = note
 
     // 労働時間を再計算
-    const newCheckIn = checkInTime !== undefined ? (checkInTime ? new Date(checkInTime) : null) : current.checkInTime
-    const newCheckOut = checkOutTime !== undefined ? (checkOutTime ? new Date(checkOutTime) : null) : current.checkOutTime
+    const newCheckIn = checkInTime !== undefined ? (checkInTime ? toJSTDate(checkInTime) : null) : current.checkInTime
+    const newCheckOut = checkOutTime !== undefined ? (checkOutTime ? toJSTDate(checkOutTime) : null) : current.checkOutTime
     const newBreak = breakTotalMin !== undefined ? breakTotalMin : current.breakTotalMin
 
     const calc = recalculateAttendanceMinutes({
@@ -113,6 +120,21 @@ export async function PATCH(
       },
       ipAddress: getClientIp(req),
     })
+
+    // Bug #10: OvertimeRecord も同期更新
+    if (current.date) {
+      const [yr, mo] = current.date.split('-').slice(0, 2).map(Number)
+      const oldOt = current.overtimeMin || 0
+      const newOt = calc.overtimeMin
+      const diff = newOt - oldOt
+      if (diff !== 0) {
+        await prisma.overtimeRecord.upsert({
+          where: { userId_year_month: { userId: current.userId, year: yr, month: mo } },
+          create: { userId: current.userId, year: yr, month: mo, totalMin: Math.max(0, newOt) },
+          update: { totalMin: { increment: diff } },
+        })
+      }
+    }
 
     return jsonOk({ attendance: updated, message: '勤怠を修正しました' })
   } catch (error) {

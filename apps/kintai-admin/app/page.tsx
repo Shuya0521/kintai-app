@@ -38,13 +38,20 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/admin').then(r => r.json()).then(adminRes => {
-      setData(adminRes)
+    fetch('/api/admin').then(r => {
+      if (r.status === 401 || r.status === 403) {
+        router.push('/login')
+        return null
+      }
+      return r.json()
+    }).then(adminRes => {
+      if (adminRes) setData(adminRes)
       setLoading(false)
     }).catch(() => {
       setLoading(false)
+      router.push('/login')
     })
-  }, [])
+  }, [router])
 
   if (authLoading || loading || !data || !user) {
     return (

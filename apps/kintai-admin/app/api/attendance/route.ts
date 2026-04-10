@@ -37,7 +37,9 @@ export async function GET(req: NextRequest) {
     where: {
       userId: { in: users.map(u => u.id) },
       status: 'approved',
-      startDate: { startsWith: month },
+      // Bug #7: 月をまたぐ有給も集計
+      startDate: { lte: `${month}-31` },
+      endDate: { gte: `${month}-01` },
     },
   })
 

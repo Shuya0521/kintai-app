@@ -66,6 +66,18 @@ export async function POST(req: NextRequest) {
         })
       } else {
         // 承認者がいない場合（統括部長等）は自動承認
+        // Bug #15: 自動承認でもApprovalレコードを作成（承認履歴を残す）
+        await tx.approval.create({
+          data: {
+            stampCorrectionId: correction.id,
+            requestType: 'stamp_correction',
+            requesterId: me.id,
+            approverId: me.id,
+            status: 'approved',
+            comment: '自動承認',
+            processedAt: new Date(),
+          },
+        })
         await tx.stampCorrection.update({
           where: { id: correction.id },
           data: { status: 'applied' },
