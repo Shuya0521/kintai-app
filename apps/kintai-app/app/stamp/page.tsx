@@ -350,7 +350,7 @@ function LogRow({ label, value, color, last }: {
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       padding: '10px 0',
-      borderBottom: last ? 'none' : '1px solid rgba(30,45,69,.5)',
+      borderBottom: last ? 'none' : '1px solid var(--b)',
     }}>
       <span style={{ fontSize: 12, color: 'var(--t3)' }}>{label}</span>
       <span style={{ fontSize: 13, fontFamily: 'DM Mono, monospace', fontWeight: 500, color: color ?? 'var(--t2)' }}>{value}</span>
@@ -376,7 +376,7 @@ const S: Record<string, React.CSSProperties> = {
   statusPill:{
     display: 'inline-flex', alignItems: 'center', marginTop: 12,
     padding: '5px 14px', borderRadius: 20, fontSize: 12,
-    fontFamily: 'DM Mono, monospace', border: '1px solid rgba(255,255,255,.1)',
+    fontFamily: 'DM Mono, monospace', border: '1px solid var(--b)',
   },
   todayLog: {
     background: 'var(--s1)', border: '1px solid var(--b)',
@@ -386,6 +386,6 @@ const S: Record<string, React.CSSProperties> = {
     position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',
     background: 'var(--s2)', border: '1px solid var(--b2)', borderRadius: 12,
     padding: '12px 20px', fontSize: 13, whiteSpace: 'nowrap',
-    boxShadow: '0 8px 32px rgba(0,0,0,.5)', zIndex: 999,
+    boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 999,
   },
 }

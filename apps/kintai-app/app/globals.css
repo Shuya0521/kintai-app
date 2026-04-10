@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --bg:     #080c14;
-  --s1:     #0f1623;
-  --s2:     #161f30;
-  --s3:     #1c2840;
-  --b:      #1e2d45;
-  --b2:     #243450;
-  --acc:    #38bdf8;
-  --green:  #34d399;
-  --amber:  #fbbf24;
-  --orange: #fb923c;
-  --red:    #f87171;
-  --purple: #a78bfa;
-  --text:   #e2e8f0;
-  --t2:     #94a3b8;
-  --t3:     #3f5468;
+  --bg:     #f5f5f5;
+  --s1:     #ffffff;
+  --s2:     #f0f0f0;
+  --s3:     #e8e8e8;
+  --b:      #e0e0e0;
+  --b2:     #d5d5d5;
+  --acc:    #06c755;
+  --green:  #06c755;
+  --amber:  #f59e0b;
+  --orange: #f97316;
+  --red:    #ef4444;
+  --purple: #8b5cf6;
+  --text:   #1a1a1a;
+  --t2:     #666666;
+  --t3:     #999999;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);

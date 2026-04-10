@@ -190,7 +190,7 @@ const S: Record<string, React.CSSProperties> = {
     padding: '10px 12px', borderRadius: 9, cursor: 'pointer',
     marginBottom: 2, fontSize: 13, color: 'var(--t2)', transition: 'background .15s, color .15s',
   },
-  itemActive: { background: 'rgba(56,189,248,.1)', color: 'var(--acc)' },
+  itemActive: { background: 'rgba(6,199,85,.1)', color: 'var(--acc)' },
   icon: { fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0 },
   userBtn: {
     padding: '14px 16px', borderTop: '1px solid var(--b)',
@@ -200,7 +200,7 @@ const S: Record<string, React.CSSProperties> = {
     width: 32, height: 32, borderRadius: '50%',
     background: 'linear-gradient(135deg, var(--acc), var(--purple))',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 12, fontWeight: 700, color: '#0a0f1e', flexShrink: 0,
+    fontSize: 12, fontWeight: 700, color: '#ffffff', flexShrink: 0,
   },
   userName: { fontSize: 12, fontWeight: 500 },
   userRole: { fontSize: 10, color: 'var(--t3)', fontFamily: 'DM Mono, monospace' },

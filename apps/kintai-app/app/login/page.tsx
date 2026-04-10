@@ -197,7 +197,7 @@ const S: Record<string, React.CSSProperties> = {
   },
   loginBtn: {
     width: '100%', padding: 15, borderRadius: 12, border: 0,
-    background: 'var(--acc)', color: '#0a0f1e', fontSize: 15,
+    background: 'var(--acc)', color: '#ffffff', fontSize: 15,
     fontWeight: 700, cursor: 'pointer', marginTop: 4,
     transition: 'opacity .2s',
   },
@@ -221,14 +221,14 @@ const S: Record<string, React.CSSProperties> = {
   quickCard: {
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '14px 16px', borderRadius: 12,
-    backgroundColor: '#0f1623', border: '1px solid #1e2d45',
+    backgroundColor: 'var(--s1)', border: '1px solid var(--b)',
     cursor: 'pointer', transition: 'all 0.15s ease',
     WebkitTapHighlightColor: 'transparent',
   },
   quickAvatar: {
     width: 40, height: 40, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#080c14', fontWeight: 700, fontSize: 15, flexShrink: 0,
+    color: '#ffffff', fontWeight: 700, fontSize: 15, flexShrink: 0,
   },
   quickInfo: {
     display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0,
