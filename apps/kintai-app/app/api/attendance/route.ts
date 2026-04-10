@@ -37,6 +37,15 @@ export async function POST(req: NextRequest) {
           status: 'working',
         },
       })
+    } else if (action === 'changePlace') {
+      // 勤務場所変更（出勤中のみ）
+      if (!record || !record.checkInTime) return jsonError('出勤記録がありません', 400)
+      if (record.checkOutTime) return jsonError('既に退勤済みです', 400)
+      const newPlace = workPlace || 'office'
+      record = await prisma.attendance.update({
+        where: { id: record.id },
+        data: { workPlace: newPlace },
+      })
     } else if (action === 'out') {
       if (!record || !record.checkInTime) return jsonError('出勤記録がありません', 400)
       if (record.checkOutTime) return jsonError('既に退勤済みです', 400)

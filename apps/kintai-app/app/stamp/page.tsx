@@ -244,6 +244,48 @@ export default function StampPage() {
               <StampBtn icon="🔴" label="退勤"     color="var(--red)"    disabled={!canOut}   loading={submitting} onClick={() => doStamp('out')} />
             </div>
 
+            {/* 勤務場所変更（出勤中のみ） */}
+            {stamp.status === 'working' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <button
+                  disabled={submitting || stamp.workType !== 'remote'}
+                  onClick={async () => {
+                    setSubmitting(true)
+                    try {
+                      const res = await apiPost('/api/attendance', { action: 'changePlace', workPlace: 'office' })
+                      if (res.attendance) setStamp(s => ({ ...s, workType: 'office' }))
+                      showToast('出社に変更しました', '🏢')
+                    } catch { showToast('変更に失敗しました', '❌') }
+                    finally { setSubmitting(false) }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    border: stamp.workType === 'office' ? '2px solid var(--green)' : '1px solid var(--b)',
+                    background: stamp.workType === 'office' ? 'rgba(52,211,153,.12)' : 'transparent',
+                    color: stamp.workType === 'office' ? 'var(--green)' : 'var(--t2)',
+                  }}
+                >🏢 出社</button>
+                <button
+                  disabled={submitting || stamp.workType === 'remote'}
+                  onClick={async () => {
+                    setSubmitting(true)
+                    try {
+                      const res = await apiPost('/api/attendance', { action: 'changePlace', workPlace: 'remote' })
+                      if (res.attendance) setStamp(s => ({ ...s, workType: 'remote' }))
+                      showToast('在宅勤務に変更しました', '🏠')
+                    } catch { showToast('変更に失敗しました', '❌') }
+                    finally { setSubmitting(false) }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    border: stamp.workType === 'remote' ? '2px solid var(--purple)' : '1px solid var(--b)',
+                    background: stamp.workType === 'remote' ? 'rgba(167,139,250,.12)' : 'transparent',
+                    color: stamp.workType === 'remote' ? 'var(--purple)' : 'var(--t2)',
+                  }}
+                >🏠 在宅</button>
+              </div>
+            )}
+
             {/* 今日のログ */}
             <div style={S.todayLog}>
               <LogRow label="勤務場所" value={stamp.inTime ? (stamp.workType === 'remote' ? '🏠 在宅勤務' : '🏢 出社') : '—'} color={stamp.inTime ? (stamp.workType === 'remote' ? 'var(--purple)' : 'var(--green)') : 'var(--t3)'} />
